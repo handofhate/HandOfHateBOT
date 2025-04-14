@@ -1,0 +1,14 @@
+# Force consistent line endings
+* text=auto
+
+# Prevent diff on binary files
+*.mp3 binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+
+# Treat JS/JSON as text and normalize endings
+*.js text eol=lf
+*.json text eol=lf
