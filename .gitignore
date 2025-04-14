@@ -8,9 +8,20 @@ config.js
 logs/
 *.log
 
+# Backups
+*-copy.js
+backups/
+
+# Output or temp
+*.tmp
+*.bak
+
 # OS-specific
 .DS_Store
 Thumbs.db
+
+# System/Editor temp
+*.swp
 
 # IDEs
 .vscode/
