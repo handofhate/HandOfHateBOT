@@ -39,4 +39,4 @@ if /i "%BUMP%"=="y" (
 :: =============================================
 echo.
 echo 🔒 All done! This window will close when you're ready.
-cmd /k
+pause >nul
