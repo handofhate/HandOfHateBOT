@@ -43,7 +43,6 @@ const fs = require('fs');
 const player = require('play-sound')();
 const path = require('path');
 const config = require('./config');
-// console.log('[ DEBUG     ] Loaded config:', config);
 
 const OBSWebSocket = require('obs-websocket-js').OBSWebSocket;
 const obs = new OBSWebSocket();
@@ -111,20 +110,10 @@ const CONFIG = {
 
 
 // =============================================
-// 	Debug Flags
+// 	Debug Flags (linked to config.js)
 // =============================================
 
-const DEBUG_FLAGS = {
-    logClean: false, // If true, overrides and suppresses all other debug logging
-    logColorDebugMessages: true,
-    logColorSuccessMessages: true,
-    logSoundDebugMessages: true,
-    logSoundSuccessMessages: true,
-    logOBSDebugMessages: true,
-    logOBSSuccessMessages: true,
-    logUserChatMessages: true,
-    logBotChatMessages: true
-};
+const DEBUG_FLAGS = config.debug;
 
 
 // =============================================

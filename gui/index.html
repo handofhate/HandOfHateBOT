@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+	<title>Twitchbot GUI</title>
+	<meta charset="UTF-8" />
+	<style>
+		body {
+			background: #1e1e1e;
+			color: #eee;
+			font-family: sans-serif;
+			padding: 20px;
+		}
+
+		.tab {
+			margin-right: 10px;
+			padding: 10px 20px;
+			background: #333;
+			color: #fff;
+			border: none;
+			cursor: pointer;
+		}
+
+		.tab:hover {
+			background: #444;
+		}
+
+		.tab.active {
+			background: #555;
+			border-left: 4px solid #aaa;
+			/* ← lil flair, change color if you want */
+			color: #fff;
+			font-weight: bold;
+		}
+
+		.tabContent {
+			margin-top: 20px;
+
+			.config-section {
+				margin-bottom: 32px;
+				border-bottom: 1px solid #444;
+				padding-bottom: 24px;
+			}
+
+			.config-input {
+				margin-bottom: 20px;
+			}
+
+			.config-input label {
+				display: block;
+				font-weight: bold;
+				margin-bottom: 4px;
+			}
+
+			.config-input input,
+			.config-input textarea {
+				width: 100%;
+				max-width: 600px;
+				margin-top: 4px;
+			}
+
+			.config-help {
+				display: block;
+				margin-top: 4px;
+				margin-left: 4px;
+				color: #aaa;
+				font-size: 0.85em;
+			}
+		}
+		
+		/* === Custom Scrollbar Styles === */
+		::-webkit-scrollbar {
+			width: 10px;
+			height: 10px;
+		}
+
+		::-webkit-scrollbar-track {
+			background: transparent;
+		}
+
+		::-webkit-scrollbar-thumb {
+			background-color: rgba(255, 255, 255, 0.2);
+			border-radius: 6px;
+			border: 2px solid transparent;
+			background-clip: content-box;
+		}
+
+		::-webkit-scrollbar-thumb:hover {
+			background-color: rgba(255, 255, 255, 0.35);
+		}
+
+		::-webkit-scrollbar-corner {
+			background: transparent;
+		}
+	</style>
+</head>
+
+<body>
+	<h1>🤖 HandOfHateBOT Control Panel</h1>
+
+	<!-- Tabs -->
+	<div>
+		<button class="tab active" onclick="switchTab('dashboard')">Dashboard</button>
+		<button class="tab" onclick="switchTab('logs')">Logs</button>
+		<button class="tab" onclick="switchTab('config')">Config</button>
+		<button class="tab" onclick="switchTab('debug')">Debug</button>
+	</div>
+
+	<!-- Dashboard Tab -->
+	<div id="dashboardTab" class="tabContent">
+		<button id="startBot">Start Bot</button>
+		<button id="stopBot" disabled>Stop Bot</button>
+		<p id="status"></p>
+	</div>
+
+	<!-- Logs Tab -->
+	<div id="logsTab" class="tabContent" style="display:none;">
+		<div id="logOutput"
+			style="white-space: pre-wrap; background: #111; color: #0f0; padding: 10px; margin-top: 20px; height: 300px; overflow-y: scroll; font-family: monospace;">
+		</div>
+	</div>
+
+	<!-- Config Tab -->
+	<div id="configTab" class="tabContent" style="display:none;">
+		<h2>Configuration Settings</h2>
+		<hr style="margin: 16px 0; border-color: #444;" />
+		<div id="configForm"></div>
+		<button id="saveFullConfig">💾 Save to config.js</button>
+	</div>
+
+	<!-- Debug Tab -->
+	<div id="debugTab" class="tabContent" style="display:none;">
+		<h2>Debug Settings</h2>
+		<div id="debugFlags"></div>
+		<button id="saveDebugConfig">💾 Save to config.js</button>
+	</div>
+
+	<script src="renderer.js"></script>
+</body>
+
+</html>

@@ -2,7 +2,7 @@
   "name": "HandOfHateBOT",
   "version": "1.1.1",
   "description": "Custom Twitch bot for stream automation, lights, sounds, and OBS control.",
-  "main": "bot.js",
+  "main": "main.js",
   "scripts": {
     "start": "node bot.js",
     "test": "node test.js",
@@ -10,7 +10,13 @@
   },
   "author": "Ty",
   "license": "MIT",
-  "keywords": ["twitch", "bot", "obs", "philips-hue", "automation"],
+  "keywords": [
+    "twitch",
+    "bot",
+    "obs",
+    "philips-hue",
+    "automation"
+  ],
   "dependencies": {
     "axios": "^1.8.1",
     "node-key-sender": "^1.0.11",
@@ -18,5 +24,11 @@
     "play-sound": "^1.1.6",
     "ps-node": "^0.1.6",
     "tmi.js": "^1.8.5"
+  },
+  "devDependencies": {
+    "electron": "^35.1.5"
+  },
+  "scripts": {
+  "start:gui": "electron ."
   }
 }
