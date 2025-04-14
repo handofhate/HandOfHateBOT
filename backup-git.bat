@@ -30,9 +30,13 @@ if /i "%BUMP%"=="y" (
     set /p NEWVER=Enter new version (e.g. 1.1.2): 
     git tag v%NEWVER%
     echo ✅ Tagged with version: v%NEWVER%
+) else (
+    echo ❎ Version bump skipped.
 )
 
+:: =============================================
+::       Final pause to prevent auto-close
+:: =============================================
 echo.
-echo ✅ Git backup complete.
-echo.
-pause
+echo 🔒 All done! Press any key to close this window.
+pause >nul
