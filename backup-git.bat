@@ -34,4 +34,5 @@ if /i "%BUMP%"=="y" (
 
 echo.
 echo ✅ Git backup complete.
+echo.
 pause
