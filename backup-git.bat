@@ -38,5 +38,5 @@ if /i "%BUMP%"=="y" (
 ::       Final pause to prevent auto-close
 :: =============================================
 echo.
-echo 🔒 All done! Press any key to close this window.
-pause >nul
+echo 🔒 All done! This window will close when you're ready.
+cmd /k
