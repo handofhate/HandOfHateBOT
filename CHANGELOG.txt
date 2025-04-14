@@ -1,0 +1,48 @@
+Changelog
+=========
+
+[1.1.1] - 2025-04-13
+--------------------
+
+⚙️ Minor Update
+- Bumped version to 1.1.1
+
+🔧 Configuration Cleanup
+- Moved hardcoded channel name ("handofhate") to config.twitch.channel
+- Introduced config.twitch.streamerName to customize display name in !uptime responses
+- Clarified version-lock strategy: !version is now tied to official releases, not user edits
+
+🛠️ Bug Fix
+- Fixed !uptime and !subscribers Twitch API calls by refreshing the OAuth token
+
+
+[1.1.0] - 2025-04-13
+--------------------
+
+🔺 Major Upgrade
+- Bumped version to 1.1.0
+
+🎯 Highlights
+- Nightbot fully replaced — All Nightbot functionality migrated into the custom bot
+- Twitch Helix API integration — !subscribers and !uptime now use official Twitch data
+- Emoji-enhanced branding — Updated static commands with consistent, on-brand emojis
+- Improved command structure — Clear separation between static, dynamic, and interactive commands
+- Codebase polish — Removed duplicate logic and cleaned up formatting
+- Bot personality refinements — More fun, more edge, more on-brand sass
+
+🧪 Stability
+- Verified all commands and debug flags
+- Version number matches !version output
+
+
+[1.0.0] - 2025-04-13 (baseline)
+-------------------------------
+
+✅ Initial Public Version
+- Launched first public build of HandOfHateBOT
+- Supported features: Philips Hue integration, OBS scene toggling, sound effects, Nightbot-style commands
+- Cooldowns, debug flags, and basic error handling in place
+- OBS process monitor and auto-shutdown included
+- Twitch raid auto-response implemented
+
+“The HAND OF HATE grips the fearful.”
