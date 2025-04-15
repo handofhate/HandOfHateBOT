@@ -147,11 +147,12 @@ function loadSoundButtons() {
         const soundName = filename.replace('.mp3', '');
         const button = document.createElement('button');
         button.textContent = soundName;
+        button.className = 'btn btn-outline btn-sm';
         button.addEventListener('click', () => {
             sendCommand(`!${soundName}`);
         });
         container.appendChild(button);
-    });
+    });    
 
     // Add this line at the end of loadSoundButtons()
     if (botProcess === null) setDashboardButtonsEnabled(false);

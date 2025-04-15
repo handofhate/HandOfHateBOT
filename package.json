@@ -1,10 +1,11 @@
 {
-  "name": "HandOfHateBOT",
+  "name": "handofhatebot",
   "version": "1.1.1",
   "description": "Custom Twitch bot for stream automation, lights, sounds, and OBS control.",
   "main": "main.js",
   "scripts": {
-    "start:gui": "electron ."
+    "start:gui": "electron .",
+    "build:css": "npx @tailwindcss/cli -i app.css -o gui/style.css --watch"
   },
   "author": "Ty",
   "license": "MIT",
@@ -16,6 +17,7 @@
     "automation"
   ],
   "dependencies": {
+    "@tailwindcss/cli": "^4.1.4",
     "axios": "^1.8.1",
     "electron-store": "^10.0.1",
     "node-key-sender": "^1.0.11",
@@ -25,6 +27,12 @@
     "tmi.js": "^1.8.5"
   },
   "devDependencies": {
-    "electron": "^35.1.5"
-  }
+    "autoprefixer": "^10.4.21",
+    "daisyui": "^5.0.19",
+    "electron": "^35.1.5",
+    "postcss": "^8.5.3",
+    "tailwindcss": "^4.1.4",
+    "tailwindcss-cli": "^0.1.2"
+  },
+  "type": "commonjs"
 }

@@ -1,235 +1,128 @@
 <!DOCTYPE html>
-<html>
-
+<html lang="en">
 <head>
-	<title>Twitchbot GUI</title>
 	<meta charset="UTF-8" />
-	<style>
-		body {
-			background: #1e1e1e;
-			color: #eee;
-			font-family: sans-serif;
-			padding: 20px;
-		}
-
-		.tab {
-			margin-right: 10px;
-			padding: 10px 20px;
-			background: #333;
-			color: #fff;
-			border: none;
-			cursor: pointer;
-		}
-
-		.tab:hover {
-			background: #444;
-		}
-
-		.tab.active {
-			background: #555;
-			border-left: 4px solid #aaa;
-			color: #fff;
-			font-weight: bold;
-		}
-
-		.tabContent {
-			margin-top: 20px;
-
-			.config-section {
-				margin-bottom: 32px;
-				border-bottom: 1px solid #444;
-				padding-bottom: 24px;
-			}
-
-			.config-input {
-				margin-bottom: 20px;
-			}
-
-			.config-input label {
-				display: block;
-				font-weight: bold;
-				margin-bottom: 4px;
-			}
-
-			.config-input input,
-			.config-input textarea {
-				width: 100%;
-				max-width: 600px;
-				margin-top: 4px;
-			}
-
-			.config-help {
-				display: block;
-				margin-top: 4px;
-				margin-left: 4px;
-				color: #aaa;
-				font-size: 0.85em;
-			}
-		}
-
-		/* === Custom Scrollbar Styles === */
-		::-webkit-scrollbar {
-			width: 10px;
-			height: 10px;
-		}
-
-		::-webkit-scrollbar-track {
-			background: transparent;
-		}
-
-		::-webkit-scrollbar-thumb {
-			background-color: rgba(255, 255, 255, 0.2);
-			border-radius: 6px;
-			border: 2px solid transparent;
-			background-clip: content-box;
-		}
-
-		::-webkit-scrollbar-thumb:hover {
-			background-color: rgba(255, 255, 255, 0.35);
-		}
-
-		::-webkit-scrollbar-corner {
-			background: transparent;
-		}
-
-		.status-indicator {
-			display: inline-block;
-			margin-left: 10px;
-			font-weight: bold;
-		}
-
-		#viewerCount {
-			margin-left: 10px;
-			font-style: italic;
-		}
-
-		.color-buttons button,
-		.sound-buttons button {
-			margin: 4px 4px 8px 0;
-			padding: 6px 12px;
-			cursor: pointer;
-		}
-
-		button {
-			transition: opacity 0.2s ease;
-		}
-
-		#dashboardTab button {
-			background-color: #444;
-			color: #eee;
-			border: none;
-			border-radius: 4px;
-			padding: 6px 12px;
-			margin: 4px 4px 8px 0;
-			transition: opacity 0.2s ease;
-		}
-
-		#dashboardTab button:hover {
-			background-color: #555;
-		}
-	</style>
+	<title>HandOfHateBOT GUI</title>
+	<link href="./style.css" rel="stylesheet">
 </head>
 
-<body>
-	<h1>🤖 HandOfHateBOT Control Panel</h1>
+<body data-theme="cyberpunk" class="h-screen flex flex-col">
+
+	<!-- Page Header -->
+	<h1 class="text-4xl font-bold text-center text-secondary p-4">🤖 HandOfHateBOT Control Panel</h1>
 
 	<!-- Tabs -->
-	<div>
-		<button class="tab active" onclick="switchTab('dashboard')">Dashboard</button>
-		<button class="tab" onclick="switchTab('logs')">Logs</button>
-		<button class="tab" onclick="switchTab('config')">Config</button>
-		<button class="tab" onclick="switchTab('debug')">Debug</button>
+	<div class="tabs tabs-boxed justify-center mb-4">
+		<a class="tab tab-active" onclick="switchTab('dashboard')">Dashboard</a>
+		<a class="tab" onclick="switchTab('logs')">Logs</a>
+		<a class="tab" onclick="switchTab('config')">Config</a>
+		<a class="tab" onclick="switchTab('debug')">Debug</a>
 	</div>
 
-	<!-- Dashboard Tab -->
-	<div id="dashboardTab" class="tabContent">
-		<!-- Start/Stop + Bot Status -->
-		<div style="margin-bottom: 12px;">
-			<button id="startBot">Start Bot</button>
-			<button id="stopBot" disabled>Stop Bot</button>
-			<span class="status-indicator" id="status">Bot not running.</span>
-		</div>
+	<!-- Main Content Wrapper -->
+	<div class="flex-1 overflow-y-auto px-6 pb-6 space-y-8">
 
-		<!-- Testing Mode -->
-		<div style="margin-top: 30px;">
-			<h3>🧪 Testing Mode</h3>
-			<label style="display: block; margin-bottom: 6px;">
-				<input type="checkbox" id="bypassTwitch"> Bypass connection to Twitch
-			</label>
-			<label style="display: block;">
-				<input type="checkbox" id="simulateOBS"> Simulate connection to OBS WebSocket
-			</label>
-		</div>
-		<div style="margin-top: 10px;">
-			<button id="updateTestFlagsBtn">Update Testing Mode</button>
-		</div>		
+		<!-- Dashboard Tab -->
+		<div id="dashboardTab" class="tabContent space-y-6">
 
-		<!-- Stream Live + Viewers -->
-		<div style="margin-bottom: 12px;">
-			<span>📡 Stream: <strong id="streamStatus">Offline</strong></span>
-			<span id="viewerCount">👀 Viewers: 0</span>
-		</div>
+			<!-- Start/Stop Controls -->
+			<div class="flex gap-4 items-center">
+				<button id="startBot" class="btn btn-success">▶ Start Bot</button>
+				<button id="stopBot" class="btn btn-error" disabled>⛔ Stop Bot</button>
+				<span id="status" class="ml-2 font-medium text-warning">Bot not running.</span>
+			</div>
 
-		<!-- Color Control -->
-		<div style="margin-bottom: 20px;">
-			<h3>💡 Color Control</h3>
-			<div class="color-buttons">
-				<button onclick="window.sendCommand('!red')">Red</button>
-				<button onclick="window.sendCommand('!green')">Green</button>
-				<button onclick="window.sendCommand('!blue')">Blue</button>
-				<button onclick="window.sendCommand('!yellow')">Yellow</button>
-				<button onclick="window.sendCommand('!purple')">Purple</button>
-				<button onclick="window.sendCommand('!cyan')">Cyan</button>
-				<button onclick="window.sendCommand('!magenta')">Magenta</button>
-				<button onclick="window.sendCommand('!orange')">Orange</button>
-				<button onclick="window.sendCommand('!white')">White</button>
-				<button onclick="window.sendCommand('!black')">Black</button>
-				<button onclick="window.sendCommand('!randomcolor')">Random</button>
+			<!-- Testing Mode -->
+			<div class="card bg-base-300 shadow-lg p-4 space-y-4">
+				<h3 class="text-xl font-bold text-accent">🧪 Testing Mode</h3>
+				<div class="form-control">
+					<label class="label cursor-pointer justify-between">
+						<span class="label-text">Bypass connection to Twitch</span>
+						<input type="checkbox" id="bypassTwitch" class="toggle toggle-warning">
+					</label>
+				</div>
+				<div class="form-control">
+					<label class="label cursor-pointer justify-between">
+						<span class="label-text">Simulate connection to OBS WebSocket</span>
+						<input type="checkbox" id="simulateOBS" class="toggle toggle-info">
+					</label>
+				</div>
+				<button id="updateTestFlagsBtn" class="btn btn-outline btn-secondary">🔧 Update Testing Mode</button>
+			</div>
+
+			<!-- Stream Info -->
+			<div class="stats shadow w-fit">
+				<div class="stat">
+					<div class="stat-title">📡 Stream</div>
+					<div class="stat-value text-error" id="streamStatus">Offline</div>
+				</div>
+				<div class="stat">
+					<div class="stat-title">👀 Viewers</div>
+					<div class="stat-value" id="viewerCount">0</div>
+				</div>
+			</div>
+
+			<!-- Color Control -->
+			<div>
+				<h3 class="text-xl font-bold mb-2">💡 Color Control</h3>
+				<div class="flex flex-wrap gap-2">
+					<button class="btn btn-sm btn-error" onclick="window.sendCommand('!red')">Red</button>
+					<button class="btn btn-sm btn-success" onclick="window.sendCommand('!green')">Green</button>
+					<button class="btn btn-sm btn-primary" onclick="window.sendCommand('!blue')">Blue</button>
+					<button class="btn btn-sm btn-warning" onclick="window.sendCommand('!yellow')">Yellow</button>
+					<button class="btn btn-sm btn-secondary" onclick="window.sendCommand('!purple')">Purple</button>
+					<button class="btn btn-sm btn-info" onclick="window.sendCommand('!cyan')">Cyan</button>
+					<button class="btn btn-sm" onclick="window.sendCommand('!magenta')">Magenta</button>
+					<button class="btn btn-sm" onclick="window.sendCommand('!orange')">Orange</button>
+					<button class="btn btn-sm" onclick="window.sendCommand('!white')">White</button>
+					<button class="btn btn-sm" onclick="window.sendCommand('!black')">Black</button>
+					<button class="btn btn-sm btn-accent" onclick="window.sendCommand('!randomcolor')">Random</button>
+				</div>
+			</div>
+
+			<!-- Sound Effects -->
+			<div>
+				<h3 class="text-xl font-bold mb-2">🔊 Sound Effects</h3>
+				<div class="flex flex-wrap gap-2" id="soundButtons"></div>
+				<button class="btn btn-outline btn-info mt-2" id="refreshSoundsBtn" onclick="window.loadSoundButtons()">🔄 Refresh Sound Effects</button>
+			</div>
+
+			<!-- OBS Source Toggle -->
+			<div>
+				<h3 class="text-xl font-bold mb-2">🎥 Toggle OBS Source</h3>
+				<button class="btn btn-primary btn-sm" id="toggleObs">🎬 Toggle Source</button>
+			</div>
+
+			<!-- Manual Command Entry -->
+			<div>
+				<h3 class="text-xl font-bold mb-2">⌨️ Manual Command Entry</h3>
+				<div class="flex gap-2">
+					<input type="text" id="manualCommand" placeholder="Type a command like !uptime or !color 12345" class="input input-bordered w-full max-w-md" />
+					<button class="btn btn-secondary" onclick="handleSendClick()">Send</button>
+				</div>
 			</div>
 		</div>
 
-		<!-- Sound Effect Triggers -->
-		<div style="margin-bottom: 20px;">
-			<h3>🔊 Sound Effects</h3>
-			<div class="sound-buttons" id="soundButtons"></div>
-			<button id="refreshSoundsBtn" onclick="window.loadSoundButtons()">🔄 Refresh Sound Effects</button>
-		</div>
-
-		<!-- OBS Toggle -->
-		<div style="margin-bottom: 20px;">
-			<h3>🎥 Toggle OBS Source</h3>
-			<button id="toggleObs">Toggle Source</button>
-		</div>
-
-		<!-- Custom Command Field -->
-		<div>
-			<h3>⌨️ Manual Command Entry</h3>
-			<input type="text" id="manualCommand" placeholder="Type a command like !uptime or !color 12345"
-				style="width: 60%;">
-			<button onclick="handleSendClick()">Send</button>
-		</div>
+<!-- Logs Tab -->
+<div id="logsTab" class="tabContent hidden flex flex-col h-full">
+	<div class="flex-1 flex flex-col">
+		<pre id="logOutput" class="bg-black text-green-400 p-4 rounded-md flex-1 overflow-y-auto w-full whitespace-pre-wrap"></pre>
 	</div>
+</div>
 
-	<!-- Logs Tab -->
-	<div id="logsTab" class="tabContent" style="display:none;">
-		<div id="logOutput"
-			style="white-space: pre-wrap; background: #111; color: #0f0; padding: 10px; margin-top: 20px; height: 300px; overflow-y: scroll; font-family: monospace;">
+		<!-- Config Tab -->
+		<div id="configTab" class="tabContent hidden space-y-4">
+			<h2 class="text-xl font-bold text-accent">Configuration Settings</h2>
+			<div id="configForm" class="space-y-2"></div>
+			<button class="btn btn-success" id="saveFullConfig">💾 Save to config.js</button>
 		</div>
-	</div>
 
-	<!-- Config Tab -->
-	<div id="configTab" class="tabContent" style="display:none;">
-		<h2>Configuration Settings</h2>
-		<hr style="margin: 16px 0; border-color: #444;" />
-		<div id="configForm"></div>
-		<button id="saveFullConfig">💾 Save to config.js</button>
-	</div>
-
-	<!-- Debug Tab -->
-	<div id="debugTab" class="tabContent" style="display:none;">
-		<h2>Debug Settings</h2>
-		<div id="debugFlags"></div>
-		<button id="saveDebugConfig">💾 Save to config.js</button>
+		<!-- Debug Tab -->
+		<div id="debugTab" class="tabContent hidden space-y-4">
+			<h2 class="text-xl font-bold text-accent">Debug Settings</h2>
+			<div id="debugFlags"></div>
+			<button class="btn btn-warning" id="saveDebugConfig">💾 Save to config.js</button>
+		</div>
 	</div>
 
 	<script src="renderer.js"></script>
@@ -239,16 +132,12 @@
 			const command = input.value.trim();
 			if (command && typeof window.sendCommand === 'function') {
 				window.sendCommand(command);
-				input.value = ''; // Clear the box after sending
+				input.value = '';
 			}
 		}
-
 		document.getElementById('manualCommand').addEventListener('keydown', (e) => {
-			if (e.key === 'Enter') {
-				handleSendClick();
-			}
+			if (e.key === 'Enter') handleSendClick();
 		});
 	</script>
 </body>
-
 </html>
