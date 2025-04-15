@@ -28,7 +28,6 @@
 		.tab.active {
 			background: #555;
 			border-left: 4px solid #aaa;
-			/* ← lil flair, change color if you want */
 			color: #fff;
 			font-weight: bold;
 		}
@@ -67,7 +66,7 @@
 				font-size: 0.85em;
 			}
 		}
-		
+
 		/* === Custom Scrollbar Styles === */
 		::-webkit-scrollbar {
 			width: 10px;
@@ -92,6 +91,42 @@
 		::-webkit-scrollbar-corner {
 			background: transparent;
 		}
+
+		.status-indicator {
+			display: inline-block;
+			margin-left: 10px;
+			font-weight: bold;
+		}
+
+		#viewerCount {
+			margin-left: 10px;
+			font-style: italic;
+		}
+
+		.color-buttons button,
+		.sound-buttons button {
+			margin: 4px 4px 8px 0;
+			padding: 6px 12px;
+			cursor: pointer;
+		}
+
+		button {
+			transition: opacity 0.2s ease;
+		}
+
+		#dashboardTab button {
+			background-color: #444;
+			color: #eee;
+			border: none;
+			border-radius: 4px;
+			padding: 6px 12px;
+			margin: 4px 4px 8px 0;
+			transition: opacity 0.2s ease;
+		}
+
+		#dashboardTab button:hover {
+			background-color: #555;
+		}
 	</style>
 </head>
 
@@ -108,9 +143,71 @@
 
 	<!-- Dashboard Tab -->
 	<div id="dashboardTab" class="tabContent">
-		<button id="startBot">Start Bot</button>
-		<button id="stopBot" disabled>Stop Bot</button>
-		<p id="status"></p>
+		<!-- Start/Stop + Bot Status -->
+		<div style="margin-bottom: 12px;">
+			<button id="startBot">Start Bot</button>
+			<button id="stopBot" disabled>Stop Bot</button>
+			<span class="status-indicator" id="status">Bot not running.</span>
+		</div>
+
+		<!-- Testing Mode -->
+		<div style="margin-top: 30px;">
+			<h3>🧪 Testing Mode</h3>
+			<label style="display: block; margin-bottom: 6px;">
+				<input type="checkbox" id="bypassTwitch"> Bypass connection to Twitch
+			</label>
+			<label style="display: block;">
+				<input type="checkbox" id="simulateOBS"> Simulate connection to OBS WebSocket
+			</label>
+		</div>
+		<div style="margin-top: 10px;">
+			<button id="updateTestFlagsBtn">Update Testing Mode</button>
+		</div>		
+
+		<!-- Stream Live + Viewers -->
+		<div style="margin-bottom: 12px;">
+			<span>📡 Stream: <strong id="streamStatus">Offline</strong></span>
+			<span id="viewerCount">👀 Viewers: 0</span>
+		</div>
+
+		<!-- Color Control -->
+		<div style="margin-bottom: 20px;">
+			<h3>💡 Color Control</h3>
+			<div class="color-buttons">
+				<button onclick="window.sendCommand('!red')">Red</button>
+				<button onclick="window.sendCommand('!green')">Green</button>
+				<button onclick="window.sendCommand('!blue')">Blue</button>
+				<button onclick="window.sendCommand('!yellow')">Yellow</button>
+				<button onclick="window.sendCommand('!purple')">Purple</button>
+				<button onclick="window.sendCommand('!cyan')">Cyan</button>
+				<button onclick="window.sendCommand('!magenta')">Magenta</button>
+				<button onclick="window.sendCommand('!orange')">Orange</button>
+				<button onclick="window.sendCommand('!white')">White</button>
+				<button onclick="window.sendCommand('!black')">Black</button>
+				<button onclick="window.sendCommand('!randomcolor')">Random</button>
+			</div>
+		</div>
+
+		<!-- Sound Effect Triggers -->
+		<div style="margin-bottom: 20px;">
+			<h3>🔊 Sound Effects</h3>
+			<div class="sound-buttons" id="soundButtons"></div>
+			<button id="refreshSoundsBtn" onclick="window.loadSoundButtons()">🔄 Refresh Sound Effects</button>
+		</div>
+
+		<!-- OBS Toggle -->
+		<div style="margin-bottom: 20px;">
+			<h3>🎥 Toggle OBS Source</h3>
+			<button id="toggleObs">Toggle Source</button>
+		</div>
+
+		<!-- Custom Command Field -->
+		<div>
+			<h3>⌨️ Manual Command Entry</h3>
+			<input type="text" id="manualCommand" placeholder="Type a command like !uptime or !color 12345"
+				style="width: 60%;">
+			<button onclick="handleSendClick()">Send</button>
+		</div>
 	</div>
 
 	<!-- Logs Tab -->
@@ -136,6 +233,22 @@
 	</div>
 
 	<script src="renderer.js"></script>
+	<script>
+		function handleSendClick() {
+			const input = document.getElementById('manualCommand');
+			const command = input.value.trim();
+			if (command && typeof window.sendCommand === 'function') {
+				window.sendCommand(command);
+				input.value = ''; // Clear the box after sending
+			}
+		}
+
+		document.getElementById('manualCommand').addEventListener('keydown', (e) => {
+			if (e.key === 'Enter') {
+				handleSendClick();
+			}
+		});
+	</script>
 </body>
 
 </html>

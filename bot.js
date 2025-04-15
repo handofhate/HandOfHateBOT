@@ -44,14 +44,43 @@ const player = require('play-sound')();
 const path = require('path');
 const config = require('./config');
 
+const args = process.argv.slice(2);
+let BYPASS_TWITCH = args.includes('--bypass-twitch');
+let SIMULATE_OBS = args.includes('--simulate-obs');
+
+if (BYPASS_TWITCH) {
+    console.log('[ TWITCH TEST  ] Bypassing Twitch connection');
+}
+if (SIMULATE_OBS) {
+    console.log('[ OBS TEST     ] Simulating OBS WebSocket');
+}
+
 const OBSWebSocket = require('obs-websocket-js').OBSWebSocket;
 const obs = new OBSWebSocket();
 
-obs.connect(config.obs.websocketUrl).then(() => {
-    console.log('[ OBS       ] Connected to OBS WebSocket.');
-}).catch(err => {
-    console.error('[ OBS       ] Failed to connect to OBS WebSocket:', err);
-});
+if (!SIMULATE_OBS) {
+    obs.connect(config.obs.websocketUrl).then(() => {
+        console.log('[ OBS OK       ] Connected to OBS WebSocket.');
+    }).catch(err => {
+        console.error('[ OBS ERROR    ] Failed to connect to OBS WebSocket:', err);
+    });
+} else {
+    console.log('[ OBS TEST     ] Simulating OBS WebSocket connection');
+}
+function updateTestModeFlags({ bypassTwitch, simulateOBS }) {
+	const prevBypass = BYPASS_TWITCH;
+	const prevSim = SIMULATE_OBS;
+
+	BYPASS_TWITCH = bypassTwitch;
+	SIMULATE_OBS = simulateOBS;
+
+	if (prevBypass !== bypassTwitch || prevSim !== simulateOBS) {
+		console.log(`[ SYSTEM OK    ] Updated test mode flags: Twitch=${bypassTwitch}, OBS=${simulateOBS}`);
+	} else {
+		console.log(`[ SYSTEM OK    ] Test mode flags unchanged: Twitch=${bypassTwitch}, OBS=${simulateOBS}`);
+	}
+}
+module.exports.updateTestModeFlags = updateTestModeFlags;
 
 
 // =============================================
@@ -189,12 +218,12 @@ function handleColorCommand(command, channel, hueOverride = null) {
     }
 
     if (colorData) {
-        debugLog('logColorDebugMessages', `[ DEBUG     ] Handling ${colorName} → ${JSON.stringify(colorData)}`);
+        debugLog('logColorDebugMessages', `[ DEBUG COLOR  ] Handling ${colorName} → ${JSON.stringify(colorData)}`);
         changeColor(colorData, colorName);
-        debugLog('logColorSuccessMessages', `[ COLOR     ] Changed color to: ${colorName}`);
+        debugLog('logColorSuccessMessages', `[ COLOR OK     ] Changed color to: ${colorName}`);
         const botMessage = `💡 Changing the lights to ${colorName}.`;
         client.say(channel, botMessage);
-        debugLog('logBotChatMessages', `[ BOT CHAT  ] ${botMessage}`);
+        debugLog('logBotChatMessages', `[ BOT CHAT     ] ${botMessage}`);
         return true;
     }
 
@@ -210,7 +239,7 @@ async function changeColor(color, colorName) {
     const bri = color.bri !== undefined ? color.bri : 254;
     const on = color.on !== undefined ? color.on : true;
 
-    debugLog('logColorDebugMessages', `[ DEBUG     ] Sending to bulbs [${CONFIG.hue.bulbIds.join(', ')}]: hue=${color.hue}, sat=${color.sat}, bri=${bri}, on=${on}`);
+    debugLog('logColorDebugMessages', `[ DEBUG COLOR  ] Sending to bulbs [${CONFIG.hue.bulbIds.join(', ')}]: hue=${color.hue}, sat=${color.sat}, bri=${bri}, on=${on}`);
 
     for (let bulbId of CONFIG.hue.bulbIds) {
         const url = `http://${CONFIG.hue.bridgeIp}/api/${CONFIG.hue.apiKey}/lights/${bulbId}/state`;
@@ -223,7 +252,7 @@ async function changeColor(color, colorName) {
                 bri
             });
         } catch (error) {
-            console.error('[ COLOR     ] Error changing color:', error);
+            console.error('[ COLOR ERROR  ] Error changing color:', error);
         }
     }
 }
@@ -248,19 +277,19 @@ function playSoundEffect(soundName, channel, isRandom = false) {
     }
 
     const soundPath = path.join(soundFolder, `${soundName}.mp3`);
-    debugLog('logSoundDebugMessages', `[ DEBUG     ] Attempting to play sound: ${soundPath}`);
+    debugLog('logSoundDebugMessages', `[ DEBUG SOUND  ] Attempting to play sound: ${soundPath}`);
 
     if (fs.existsSync(soundPath)) {
-        debugLog('logSoundSuccessMessages', `[ SOUND     ] Playing sound: ${soundName}.mp3`);
+        debugLog('logSoundSuccessMessages', `[ SOUND OK     ] Playing sound: ${soundName}.mp3`);
         player.play(soundPath, (err) => {
             if (err) {
-                console.error(`[ SOUND     ] Error playing sound effect: ${err}`);
+                console.error(`[ SOUND ERROR  ] Error playing sound effect: ${err}`);
                 client.say(channel, `🔊 Sorry, I couldn't play the sound: ${soundName}`);
             }
         });
         const botMessage = `🔊 Playing the ${soundName} sound effect.`;
         client.say(channel, botMessage);
-        debugLog('logBotChatMessages', `[ BOT CHAT  ] ${botMessage}`);
+        debugLog('logBotChatMessages', `[ BOT CHAT     ] ${botMessage}`);
     }
 }
 
@@ -270,24 +299,36 @@ function playSoundEffect(soundName, channel, isRandom = false) {
 // =============================================
 
 function toggleObsSceneItem({ sceneName, sourceName, duration, channel, successMessage, failMessage }) {
-    debugLog('logOBSDebugMessages', `[ DEBUG     ] Attempting to toggle OBS source '${sourceName}' in scene '${sceneName}'`);
+    if (SIMULATE_OBS) {
+        console.log(`[ OBS TEST     ] Pretending to toggle '${sourceName}' in scene '${sceneName}'`);
+        if (successMessage) {
+            if (!BYPASS_TWITCH) {
+                client.say(channel, successMessage); // Actually send to Twitch
+            }
+            console.log(`[ BOT CHAT     ] ${successMessage} (Simulated OBS)`);
+        }
+        return;
+    }
 
+    // Check if OBS is running by attempting to get scene list
     obs.call('GetSceneItemList', { sceneName }).then(data => {
         const item = data.sceneItems.find(i => i.sourceName === sourceName);
         if (!item) {
+            console.warn(`[ OBS WARN     ] Source '${sourceName}' not found in scene '${sceneName}'`);
             client.say(channel, `⚠️ The ${sourceName} source was not found in the scene '${sceneName}'.`);
             return;
         }
 
+        // Enable the scene item
         obs.call('SetSceneItemEnabled', {
             sceneName,
             sceneItemId: item.sceneItemId,
             sceneItemEnabled: true
         }).then(() => {
-            debugLog('logOBSSuccessMessages', `[ OBS       ] ${sourceName} enabled.`);
+            console.log(`[ OBS OK       ] ${sourceName} enabled.`);
             if (successMessage) {
                 client.say(channel, successMessage);
-                debugLog('logBotChatMessages', `[ BOT CHAT  ] ${successMessage}`);
+                debugLog('logBotChatMessages', `[ BOT CHAT     ] ${successMessage}`);
             }
 
             if (duration) {
@@ -297,56 +338,70 @@ function toggleObsSceneItem({ sceneName, sourceName, duration, channel, successM
                         sceneItemId: item.sceneItemId,
                         sceneItemEnabled: false
                     }).then(() => {
-                        debugLog('logOBSSuccessMessages', `[ OBS       ] ${sourceName} disabled.`);
+                        console.log(`[ OBS OK       ] ${sourceName} disabled.`);
                     }).catch(err => {
-                        console.error(`[OBS] Error disabling ${sourceName}:`, err);
+                        console.error(`[ OBS ERROR    ] Failed to disable ${sourceName}:`, err);
                     });
                 }, duration);
             }
         }).catch(err => {
-            console.error(`[OBS] Error enabling ${sourceName}:`, err);
+            console.error(`[ OBS ERROR    ] Failed to enable ${sourceName}:`, err);
             if (failMessage) {
                 client.say(channel, failMessage);
-                debugLog('logBotChatMessages', `[ BOT CHAT  ] ${failMessage}`);
+                debugLog('logBotChatMessages', `[ BOT CHAT     ] ${failMessage}`);
             }
         });
+
     }).catch(err => {
-        console.error(`[OBS] Error retrieving scene item list for ${sceneName}:`, err);
-        client.say(channel, `⚠️ Failed to retrieve the scene item list from OBS.`);
+        console.error('[ OBS ERROR    ] OBS is not currently running or WebSocket is not available.');
+        client.say(channel, `⚠️ OBS is not running or not responding.`);
     });
 }
 
 
 // =============================================
-// Function to handle chat messages for commands
+// Function to handle all incoming commands
 // =============================================
-
-client.on('message', async (channel, tags, message, self) => {
-    if (self) return;
-
+function handleCommand(channel, tags, message) {
+    const username = tags['display-name'] || 'Unknown';
     const lowerMsg = message.toLowerCase();
     const parts = message.split(' ');
     const command = parts[0].toLowerCase();
-    const username = tags['display-name'];
 
-    debugLog('logUserChatMessages', `[ USER CHAT ] ${username}: ${message}`);
+    if (command === '!testflags' && username === 'GUI') {
+        const bypassTwitch = parts[1] === 'true';
+        const simulateOBS = parts[2] === 'true';
+        updateTestModeFlags({ bypassTwitch, simulateOBS });
 
-    if (message.startsWith('!')) {
+        // Always confirm receipt of update, even if unchanged
+        console.log(`[ SYSTEM OK    ] Test mode flags now: Twitch=${BYPASS_TWITCH}, OBS=${SIMULATE_OBS}`);
+        return;
+    }
 
-        // !hug - Dynamic version using $(user) and $(target)
-        if (command === '!hug') {
-            const target = parts[1] || username;
-            const msg = textCommands['!hug']
-                .replace(/\$\((user)\)/gi, username)
-                .replace(/\$\((target)\)/gi, target);
+    if (!command.startsWith('!')) return;
 
-            debugLog('logBotChatMessages', `[ BOT CHAT  ] ${msg}`);
-            client.say(channel, msg);
-            return;
-        }
+    // Only log user messages if they're not from GUI input
+    if (username !== 'GUI') {
+        debugLog('logUserChatMessages', `[ USER CHAT    ] ${username}: ${message}`);
+    }
 
-        // !subscribers - Twitch Helix API method
-        if (command === '!subscribers') {
+    if (!command.startsWith('!')) return;
+
+    // !hug - Dynamic version using $(user) and $(target)
+    if (command === '!hug') {
+        const target = parts[1] || username;
+        const msg = textCommands['!hug']
+            .replace(/\$\((user)\)/gi, username)
+            .replace(/\$\((target)\)/gi, target);
+
+        debugLog('logBotChatMessages', `[ BOT CHAT     ] ${msg}`);
+        client.say(channel, msg);
+        return;
+    }
+
+    // !subscribers - Twitch Helix API method
+    if (command === '!subscribers') {
+        (async () => {
             try {
                 const userResponse = await axios.get('https://api.twitch.tv/helix/users', {
                     params: { login: 'handofhate' },
@@ -355,33 +410,31 @@ client.on('message', async (channel, tags, message, self) => {
                         'Authorization': `Bearer ${config.twitch.bearerToken}`
                     }
                 });
-
                 const userId = userResponse.data.data[0].id;
-
                 const { data } = await axios.get('https://api.twitch.tv/helix/subscriptions', {
                     headers: {
                         'Client-ID': config.twitch.clientId,
                         'Authorization': `Bearer ${config.twitch.bearerToken}`
                     },
-                    params: {
-                        broadcaster_id: userId
-                    }
+                    params: { broadcaster_id: userId }
                 });
                 const count = data.total;
                 const plural = count === 1 ? 'person is' : 'people are';
                 const msg = `⭐ ${count} ${plural} subscribed to the channel.`;
-                debugLog('logBotChatMessages', `[ BOT CHAT  ] ${msg}`);
+                debugLog('logBotChatMessages', `[ BOT CHAT     ] ${msg}`);
                 client.say(channel, msg);
             } catch (err) {
                 const errorMsg = '⚠️ Could not retrieve subscriber count.';
-                console.error('[ BOT ERROR ] Failed to fetch subscriber count:', err);
+                console.error('[ TWITCH ERROR ] Failed to fetch subscriber count:', err);
                 client.say(channel, errorMsg);
             }
-            return;
-        }
+        })();
+        return;
+    }
 
-        // !uptime - Shows how long the stream has been live
-        if (command === '!uptime') {
+    // !uptime - Shows how long the stream has been live
+    if (command === '!uptime') {
+        (async () => {
             try {
                 const userResponse = await axios.get('https://api.twitch.tv/helix/users', {
                     params: { login: 'handofhate' },
@@ -390,9 +443,7 @@ client.on('message', async (channel, tags, message, self) => {
                         'Authorization': `Bearer ${config.twitch.bearerToken}`
                     }
                 });
-
                 const userId = userResponse.data.data[0].id;
-
                 const streamResponse = await axios.get('https://api.twitch.tv/helix/streams', {
                     params: { user_id: userId },
                     headers: {
@@ -403,7 +454,7 @@ client.on('message', async (channel, tags, message, self) => {
 
                 if (streamResponse.data.data.length === 0) {
                     const msg = '💤 Ty is not currently streaming.';
-                    debugLog('logBotChatMessages', `[ BOT CHAT  ] ${msg}`);
+                    debugLog('logBotChatMessages', `[ BOT CHAT     ] ${msg}`);
                     client.say(channel, msg);
                 } else {
                     const startedAt = new Date(streamResponse.data.data[0].started_at);
@@ -420,84 +471,88 @@ client.on('message', async (channel, tags, message, self) => {
                     uptimeStr += `${seconds}s`;
 
                     const msg = `🕒 ${config.twitch.streamerName} has been streaming for ${uptimeStr.trim()}.`;
-                    debugLog('logBotChatMessages', `[ BOT CHAT  ] ${msg}`);
+                    debugLog('logBotChatMessages', `[ BOT CHAT     ] ${msg}`);
                     client.say(channel, msg);
                 }
             } catch (err) {
                 const errorMsg = '⚠️ Could not fetch uptime.';
-                console.error('[ BOT ERROR ] Failed to fetch uptime:', err);
+                console.error('[ TWITCH ERROR ] Failed to fetch uptime:', err);
                 client.say(channel, errorMsg);
             }
-            return;
-        }
-
-        // !color - Changes to custom hue
-        if (command === '!color') {
-            if (parts.length === 2) {
-                const hueValue = parseInt(parts[1], 10);
-                if (!isNaN(hueValue) && hueValue >= 0 && hueValue <= 65535) {
-                    handleColorCommand(command, channel, hueValue);
-                } else {
-                    const botMessage = '🧠 Invalid hue value! Please provide a number between 0 and 65535.';
-                    client.say(channel, botMessage);
-                    debugLog('logBotChatMessages', `[ BOT CHAT  ] ${botMessage}`);
-                }
-            } else {
-                const botMessage = '🧠 Usage: !color <hue> — please provide a number.';
-                client.say(channel, botMessage);
-                debugLog('logBotChatMessages', `[ BOT CHAT  ] ${botMessage}`);
-            }
-            return;
-        }
-
-        // !randomsound - Plays a random sound
-        if (lowerMsg === '!randomsound') {
-            playSoundEffect(null, channel, true);
-            return;
-        }
-
-        // !(sourceName) - Toggles a source in OBS for 10 seconds (as defined in config.js)
-        if (command === `!${CONFIG.constants.obs.sourceName.toLowerCase()}`) {
-            toggleObsSceneItem({
-                sceneName: CONFIG.constants.obs.sceneName,
-                sourceName: CONFIG.constants.obs.sourceName,
-                duration: CONFIG.timing.obsToggleDuration,
-                channel,
-                successMessage: `${CONFIG.constants.emojis.cat} ${CONFIG.constants.obs.sourceName} is now live for 10 seconds.`,
-                failMessage: `${CONFIG.constants.emojis.warning} Failed to toggle ${CONFIG.constants.obs.sourceName}.`
-            });
-            return;
-        }
-
-        // Static text commands with optional $(user) replacement
-        if (textCommands[command]) {
-            const response = textCommands[command];
-
-            if (typeof response === 'string') {
-                const msg = response.replace(/\$\((user)\)/gi, username);
-                debugLog('logBotChatMessages', `[ BOT CHAT  ] ${msg}`);
-                client.say(channel, msg);
-            } else if (Array.isArray(response)) {
-                response.forEach((line, index) => {
-                    setTimeout(() => {
-                        const msg = line.replace(/\$\((user)\)/gi, username);
-                        debugLog('logBotChatMessages', `[ BOT CHAT  ] ${msg}`);
-                        client.say(channel, msg);
-                    }, index * CONFIG.timing.multiLineDelay);
-                });
-            }
-            return;
-        }
-
-        // Predefined color commands like !red, !green, etc.
-        if (handleColorCommand(command, channel)) {
-            return;
-        }
-
-        // Fallback to playing a sound file by name
-        const soundName = message.slice(1);
-        playSoundEffect(soundName, channel);
+        })();
+        return;
     }
+
+    // !color - Changes to custom hue
+    if (command === '!color') {
+        if (parts.length === 2) {
+            const hueValue = parseInt(parts[1], 10);
+            if (!isNaN(hueValue) && hueValue >= 0 && hueValue <= 65535) {
+                handleColorCommand(command, channel, hueValue);
+            } else {
+                const msg = '🧠 Invalid hue value! Please provide a number between 0 and 65535.';
+                client.say(channel, msg);
+                debugLog('logBotChatMessages', `[ BOT CHAT     ] ${msg}`);
+            }
+        } else {
+            const msg = '🧠 Usage: !color <hue> — please provide a number.';
+            client.say(channel, msg);
+            debugLog('logBotChatMessages', `[ BOT CHAT     ] ${msg}`);
+        }
+        return;
+    }
+
+    if (lowerMsg === '!randomsound') {
+        playSoundEffect(null, channel, true);
+        return;
+    }
+
+    if (command === `!${CONFIG.constants.obs.sourceName.toLowerCase()}`) {
+        toggleObsSceneItem({
+            sceneName: CONFIG.constants.obs.sceneName,
+            sourceName: CONFIG.constants.obs.sourceName,
+            duration: CONFIG.timing.obsToggleDuration,
+            channel,
+            successMessage: `${CONFIG.constants.emojis.cat} ${CONFIG.constants.obs.sourceName} is now live for 10 seconds.`,
+            failMessage: `${CONFIG.constants.emojis.warning} Failed to toggle ${CONFIG.constants.obs.sourceName}.`
+        });
+        return;
+    }
+
+    if (textCommands[command]) {
+        const response = textCommands[command];
+        if (typeof response === 'string') {
+            const msg = response.replace(/\$\((user)\)/gi, username);
+            debugLog('logBotChatMessages', `[ BOT CHAT     ] ${msg}`);
+            client.say(channel, msg);
+        } else if (Array.isArray(response)) {
+            response.forEach((line, index) => {
+                setTimeout(() => {
+                    const msg = line.replace(/\$\((user)\)/gi, username);
+                    debugLog('logBotChatMessages', `[ BOT CHAT     ] ${msg}`);
+                    client.say(channel, msg);
+                }, index * CONFIG.timing.multiLineDelay);
+            });
+        }
+        return;
+    }
+
+    if (handleColorCommand(command, channel)) return;
+
+    const soundName = message.slice(1);
+    playSoundEffect(soundName, channel);
+}
+
+// =============================================
+// Twitch Message Event Handler
+// =============================================
+
+client.on('message', (channel, tags, message, self) => {
+	const isGUI = tags['display-name'] === 'GUI';
+
+	if ((self || BYPASS_TWITCH) && !isGUI) return;
+
+	handleCommand(channel, tags, message);
 });
 
 
@@ -505,11 +560,13 @@ client.on('message', async (channel, tags, message, self) => {
 // 	   Connect the bot to Twitch
 // =============================================
 
-console.log(`[ SYSTEM    ] Bot launched at ${new Date().toLocaleTimeString()}`);
+console.log(`[ SYSTEM OK    ] Bot launched at ${new Date().toLocaleTimeString()}`);
 
-client.connect().then(() => {
-    console.log('[ SYSTEM    ] Connected to Twitch.');
-});
+if (!BYPASS_TWITCH) {
+    client.connect().then(() => {
+        console.log('[ SYSTEM OK    ] Connected to Twitch.');
+    });
+}
 
 
 // =============================================
@@ -520,8 +577,25 @@ client.on('raided', (channel, username, viewers) => {
     const url = `https://twitch.tv/${username}`;
     const message = `🎉 Thank you so much for the raid, ${username}! If you haven't yet, follow them at ${url} and show them some love!`;
 
-    debugLog('logBotChatMessages', `[ BOT CHAT  ] ${message}`);
+    debugLog('logBotChatMessages', `[ BOT CHAT     ] ${message}`);
     client.say(channel, message);
+});
+
+
+// =============================================
+//      Handle Commands Sent from GUI (stdin)
+// =============================================
+
+process.stdin.on('data', (data) => {
+    const input = data.toString().trim();
+    if (!input) return;
+
+    // Fake a Twitch message from GUI
+    const fakeChannel = `#${config.twitch.channel}`;
+    const fakeTags = { 'display-name': 'GUI' };
+
+    console.log(`[ GUI INPUT    ] ${input}`);
+    client.emit('message', fakeChannel, fakeTags, input, false);
 });
 
 
@@ -529,27 +603,17 @@ client.on('raided', (channel, username, viewers) => {
 //    Function to monitor if OBS is running
 // =============================================
 
-function monitorOBSProcess() {
+function isOBSRunning(callback) {
     exec('tasklist', (err, stdout, stderr) => {
         if (err) {
-            console.error('[SYSTM] Error checking OBS process:', err);
+            console.error('[ OBS ERROR    ] Could not check if OBS is running:', err);
+            callback(false);
             return;
         }
-        if (!stdout.toLowerCase().includes('obs-browser-page.exe')) {
-            console.log('[SYSTM] OBS Browser Page is not running. Shutting down bot.');
-            process.exit();
-        }
+        const isRunning = stdout.toLowerCase().includes('obs64.exe') || stdout.toLowerCase().includes('obs.exe');
+        callback(isRunning);
     });
 }
-
-
-// =============================================
-// 	Check OBS process every 10 seconds
-// =============================================
-
-setTimeout(() => {
-    setInterval(monitorOBSProcess, CONFIG.timing.obsCheckInterval);
-}, 5000); // Delay just enough for OBS to launch or the old bot to close
 
 
 // =============================================
@@ -557,5 +621,21 @@ setTimeout(() => {
 // =============================================
 
 process.on('unhandledRejection', (err) => {
-    console.error('[SYSTEM] Unhandled promise rejection:', err);
+    const msg = String(err);
+
+    if (
+        msg.includes('Client is not connected') ||
+        msg.includes('Cannot send message') ||
+        msg.includes('Cannot read properties of undefined') // tmi.js errors
+    ) {
+        console.log('[ TWITCH TEST  ] Suppressed: ' + msg);
+    } else if (
+        msg.includes('WebSocket is not open') ||
+        msg.includes('Not connected to server') ||
+        msg.includes('no socket')
+    ) {
+        console.log('[ OBS TEST     ] Suppressed: ' + msg);
+    } else {
+        console.error('[ SYSTEM ERROR ] Unhandled promise rejection:', err);
+    }
 });
