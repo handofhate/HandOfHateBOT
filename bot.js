@@ -43,10 +43,20 @@ const fs = require('fs');
 const player = require('play-sound')();
 const path = require('path');
 const config = require('./config');
+const chokidar = require('chokidar');
+const { execFile } = require('child_process');
+const FormData = require('form-data');
+const psList = require('ps-list').default;
 
 const args = process.argv.slice(2);
 let BYPASS_TWITCH = args.includes('--bypass-twitch');
 let SIMULATE_OBS = args.includes('--simulate-obs');
+let SIMULATE_DISCORD = args.includes('--simulate-discord');
+let clipWatcher = {
+    watcher: null,
+    config: {},
+    isEnabled: false
+};
 
 if (BYPASS_TWITCH) {
     console.log('[ TWITCH TEST  ] Bypassing Twitch connection');
@@ -64,21 +74,22 @@ if (!SIMULATE_OBS) {
     }).catch(err => {
         console.error('[ OBS ERROR    ] Failed to connect to OBS WebSocket:', err);
     });
-} else {
-    console.log('[ OBS TEST     ] Simulating OBS WebSocket connection');
 }
-function updateTestModeFlags({ bypassTwitch, simulateOBS }) {
-	const prevBypass = BYPASS_TWITCH;
-	const prevSim = SIMULATE_OBS;
+function updateTestModeFlags({ bypassTwitch, simulateOBS, simulateDiscord }) {
+    const prevBypass = BYPASS_TWITCH;
+    const prevSimOBS = SIMULATE_OBS;
+    const prevSimDiscord = SIMULATE_DISCORD;
+    clipWatcher.config.simulateDiscord = simulateDiscord;
 
-	BYPASS_TWITCH = bypassTwitch;
-	SIMULATE_OBS = simulateOBS;
+    BYPASS_TWITCH = bypassTwitch;
+    SIMULATE_OBS = simulateOBS;
+    SIMULATE_DISCORD = simulateDiscord;
 
-	if (prevBypass !== bypassTwitch || prevSim !== simulateOBS) {
-		console.log(`[ SYSTEM OK    ] Updated test mode flags: Twitch=${bypassTwitch}, OBS=${simulateOBS}`);
-	} else {
-		console.log(`[ SYSTEM OK    ] Test mode flags unchanged: Twitch=${bypassTwitch}, OBS=${simulateOBS}`);
-	}
+    if (prevBypass !== bypassTwitch || prevSimOBS !== simulateOBS || prevSimDiscord !== simulateDiscord) {
+        console.log(`[ SYSTEM OK    ] Updated test mode flags: Twitch=${bypassTwitch}, OBS=${simulateOBS}, Discord=${simulateDiscord}`);
+    } else {
+        console.log(`[ SYSTEM OK    ] Test mode flags unchanged: Twitch=${bypassTwitch}, OBS=${simulateOBS}, Discord=${simulateDiscord}`);
+    }
 }
 module.exports.updateTestModeFlags = updateTestModeFlags;
 
@@ -87,7 +98,7 @@ module.exports.updateTestModeFlags = updateTestModeFlags;
 // 		Bot Configuration
 // =============================================
 
-const BOT_VERSION = '1.1.1 (Apr 13, 2025)';
+const BOT_VERSION = '1.2.0 (Apr 20, 2025)';
 const client = new tmi.Client({
     options: { debug: false },
     connection: {
@@ -156,6 +167,10 @@ function debugLog(flag, message) {
     }
 }
 
+function log(message, emoji = '', category = 'system') {
+    const emojiPrefix = emoji ? `${emoji} ` : '';
+    console.log(`${emojiPrefix}[${category}] ${message}`);
+}
 
 // =============================================
 //       Static Text Commands
@@ -178,6 +193,35 @@ const textCommands = {
 
 let lastColorChange = 0;
 
+
+// =============================================
+// 		ClipWatcher
+// =============================================
+
+function startClipWatcher() {
+
+    if (!clipWatcher.config.clipFolder) {
+        debugLog('logClipWatcherDebugMessages', '[ CLIP ERROR   ] No clip folder specified in config');
+        return;
+    }
+
+    if (clipWatcher.watcher) {
+        debugLog('logClipWatcherDebugMessages', '[ CLIP WARN    ] Clip watcher already running');
+        return;
+    }
+
+    clipWatcher.watcher = chokidar.watch(clipWatcher.config.clipFolder, {
+        persistent: true,
+        ignoreInitial: true
+    });
+
+    clipWatcher.watcher.on('add', handleClip);
+
+    debugLog('logClipWatcherSuccessMessages', '[ CLIP OK      ] Started watching for new clips');
+    if (SIMULATE_DISCORD) {
+        console.log('[ CLIP TEST    ] Simulating Discord Webhook');
+    }    
+}
 
 // =============================================
 // Helper to handle predefined and custom hue color commands
@@ -371,10 +415,11 @@ function handleCommand(channel, tags, message) {
     if (command === '!testflags' && username === 'GUI') {
         const bypassTwitch = parts[1] === 'true';
         const simulateOBS = parts[2] === 'true';
-        updateTestModeFlags({ bypassTwitch, simulateOBS });
+        const simulateDiscord = parts[3] === 'true';
+        updateTestModeFlags({ bypassTwitch, simulateOBS, simulateDiscord });
 
         // Always confirm receipt of update, even if unchanged
-        console.log(`[ SYSTEM OK    ] Test mode flags now: Twitch=${BYPASS_TWITCH}, OBS=${SIMULATE_OBS}`);
+        console.log(`[ SYSTEM OK    ] Test mode flags now: Twitch=${BYPASS_TWITCH}, OBS=${SIMULATE_OBS}, Discord=${SIMULATE_DISCORD}`);
         return;
     }
 
@@ -548,11 +593,11 @@ function handleCommand(channel, tags, message) {
 // =============================================
 
 client.on('message', (channel, tags, message, self) => {
-	const isGUI = tags['display-name'] === 'GUI';
+    const isGUI = tags['display-name'] === 'GUI';
 
-	if ((self || BYPASS_TWITCH) && !isGUI) return;
+    if ((self || BYPASS_TWITCH) && !isGUI) return;
 
-	handleCommand(channel, tags, message);
+    handleCommand(channel, tags, message);
 });
 
 
@@ -568,18 +613,116 @@ if (!BYPASS_TWITCH) {
     });
 }
 
+console.log('[ DEBUG       ] config.modules.clipWatcher:', config.modules?.clipWatcher);
+if (config.modules?.clipWatcher !== false) {
+    clipWatcher.config = {
+        ...config,
+        simulateDiscord: SIMULATE_DISCORD,
+        simulateOBS: SIMULATE_OBS,
+        bypassTwitch: BYPASS_TWITCH
+    };    
+
+    if (clipWatcher.config.simulateDiscord) {
+        console.log('[ CLIP TEST    ] Simulating Discord Webhook');
+    }    
+
+    console.log('[ DEBUG       ] About to start clip watcher...');
+    startClipWatcher();
+}
+
 
 // =============================================
-// Auto-response to Twitch raids
+// Helper for ClipWatcher
 // =============================================
 
-client.on('raided', (channel, username, viewers) => {
-    const url = `https://twitch.tv/${username}`;
-    const message = `🎉 Thank you so much for the raid, ${username}! If you haven't yet, follow them at ${url} and show them some love!`;
+function handleClip(filePath) {
+    const ext = path.extname(filePath).toLowerCase();
+    if (!['.mp4', '.mov', '.mkv'].includes(ext)) {
+        debugLog('logClipWatcherDebugMessages', '[ CLIP ERROR   ] Skipped (not a video file)');
+        return;
+    }
 
-    debugLog('logBotChatMessages', `[ BOT CHAT     ] ${message}`);
-    client.say(channel, message);
-});
+    if (path.basename(filePath).startsWith('compressed_')) return;
+
+    debugLog('logClipWatcherSuccessMessages', `[ CLIP OK      ] New clip detected: ${path.basename(filePath)}`);
+
+    setTimeout(async () => {
+        const compressed = path.join(path.dirname(filePath), 'compressed_' + path.basename(filePath));
+        const success = await compressClip(filePath, compressed);
+
+        if (!success || !fs.existsSync(compressed)) {
+            debugLog('logClipWatcherDebugMessages', '[ CLIP ERROR   ] Compression failed');
+            return;
+        }
+
+        debugLog('logClipWatcherSuccessMessages', '[ CLIP OK      ] Clip successfully compressed');
+
+        if (fileSizeMB(compressed) > clipWatcher.config.maxFileSizeMb) {
+            debugLog('logClipWatcherDebugMessages', '[ CLIP ERROR   ] Clip too large after compression');
+            if (clipWatcher.config.deleteCompressedAfterPost) fs.unlinkSync(compressed);
+            return;
+        }
+
+        const game = await detectRunningGame();
+        const dt = parseClipFilename(filePath);
+        const timeStr = dt ? dt.toLocaleString() : 'Unknown Time';
+
+        const form = new FormData();
+        form.append('file', fs.createReadStream(compressed));
+        let clipText = `🕓 \`${timeStr}\`\n📎 New clip!`;
+        if (game) clipText = `🎮 **${game}**\n` + clipText;
+        form.append('content', clipText);
+
+        try {
+            if (SIMULATE_DISCORD) {
+                debugLog('logClipWatcherSuccessMessages', '[ CLIP TEST    ] Simulated Discord webhook post.');
+            } else {
+                await axios.post(clipWatcher.config.discordWebhookUrl, form, { headers: form.getHeaders() });
+                debugLog('logClipWatcherSuccessMessages', '[ CLIP OK      ] Clip posted to Discord');
+
+                if (clipWatcher.config.deleteOriginalAfterPost) fs.unlinkSync(filePath);
+                if (clipWatcher.config.deleteCompressedAfterPost) fs.unlinkSync(compressed);
+            }
+        } catch (err) {
+            debugLog('logClipWatcherDebugMessages', '[ CLIP ERROR   ] Failed to post clip to Discord');
+        }
+    }, 5000);
+}
+
+function compressClip(input, output) {
+    return new Promise(resolve => {
+        execFile('ffmpeg', ['-i', input, '-c:v', 'libx264', '-c:a', 'aac', '-b:v', '1500k', '-ac', '2', '-y', output], err => {
+            resolve(!err);
+        });
+    });
+}
+
+async function detectRunningGame() {
+    const processes = await psList();
+    for (const proc of processes) {
+        const name = proc.name.toLowerCase();
+        if (clipWatcher.config.knownGames?.[name]) {
+            const detected = clipWatcher.config.knownGames[name];
+            debugLog('logClipWatcherSuccessMessages', `[ CLIP OK      ] Detected game: ${detected} (${name})`);
+            return detected;
+        }
+    }
+    debugLog('logClipWatcherDebugMessages', '[ CLIP WARN    ] No known game detected from process list');
+    return '';
+}
+
+function parseClipFilename(filename) {
+    const stem = path.basename(filename, path.extname(filename));
+    const parts = stem.split('_');
+    if (parts.length !== 2) return null;
+    const dt = new Date(`${parts[0]} ${parts[1].replace(/(..)(..)(..)$/, '$1:$2:$3')}`);
+    return isNaN(dt) ? null : dt;
+}
+
+function fileSizeMB(filePath) {
+    const stats = fs.statSync(filePath);
+    return stats.size / (1024 * 1024);
+}
 
 
 // =============================================
