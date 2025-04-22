@@ -30,11 +30,11 @@ Requires **Node.js v18+**
 ### 2. 🧬 Clone the Repo
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/HandOfHateBOT.git
+git clone https://github.com/handofhate/HandOfHateBOT.git
 cd HandOfHateBOT
 ```
 
-Or [download as ZIP](https://github.com/YOUR_USERNAME/HandOfHateBOT/archive/refs/heads/main.zip)
+Or [Download Latest Release ZIP](https://github.com/handofhate/HandOfHateBOT/releases/latest)
 
 ---
 
@@ -109,7 +109,7 @@ HandOfHateBOT/
 ## 🤝 Contributing
 
 Pull requests welcome. If you'd like to help add features, fix bugs, or clean up code — go for it.  
-Open an issue or hit me up on Discord: [handofhate](https://discord.gg/yourdiscord)
+Open an issue or hit me up on Discord: [handofhate](discord.gg/fzjCEcsVns)
 
 ---
 
@@ -121,3 +121,7 @@ Use it, mod it, break it — just don’t be a jerk about it.
 ---
 
 ### ⚡ Built for streamers who want control without compromise.
+
+---
+
+📝 4/21/25 - Fixed clone link, ZIP download, and Discord invite
