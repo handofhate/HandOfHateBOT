@@ -101,11 +101,30 @@ HandOfHateBOT/
 ├── tailwind.config.js     # Tailwind theming setup
 ├── CHANGELOG.md           # Version history and patch notes
 ├── README.md              # GitHub project overview
+├── KNOWN_ISSUES.md        # Currently known issues
 ├── .gitignore             # Excludes node_modules, config.js, etc.
 └── .gitattributes         # GitHub syntax/style helpers
 ```
 
 ---
+
+## 🛠️ Troubleshooting
+
+Before reporting a bug, try the following steps:
+
+1. 📄 **Check the [Known Issues](./KNOWN_ISSUES.md)**  
+   Many common problems and limitations are already documented.
+
+2. 🐛 **Enable Debugging**  
+   Go to the **Debug** tab in the GUI and enable all flags *except* `logClean`.  
+   This will make sure detailed logs are generated to help identify the issue.
+
+3. 📋 **Share Your Logs**  
+   Copy/paste the output from the **Logs** tab and post it in  
+   [`#🐞bug-reports`](https://discord.gg/fzjCEcsVns) on the Discord server.
+
+The more context you can give, the faster we can squash those bugs 🧪💀
+
 
 ## 🧠 Developer Notes
 
