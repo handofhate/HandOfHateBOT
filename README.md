@@ -109,7 +109,7 @@ HandOfHateBOT/
 ## 🤝 Contributing
 
 Pull requests welcome. If you'd like to help add features, fix bugs, or clean up code — go for it.  
-Open an issue or hit me up on Discord: [handofhate](discord.gg/fzjCEcsVns)
+Open an issue or hit me up on Discord: [handofhate](https://discord.gg/fzjCEcsVns)
 
 ---
 
