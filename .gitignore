@@ -1,6 +1,9 @@
 # Node.js dependencies
 node_modules/
 
+# Electron output
+out/
+
 # Environment and config files
 config.js
 
