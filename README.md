@@ -1,7 +1,10 @@
 # 🤖 HandOfHateBOT
 
+[![Latest Release](https://img.shields.io/github/v/release/handofhate/HandOfHateBOT?label=Download%20Latest)](https://github.com/handofhate/HandOfHateBOT/releases/latest)
+
 A custom Twitch bot built for serious stream automation.  
 Control lights, sound effects, OBS scenes, and even upload clips — all from a slick GUI dashboard.
+Let chat control these too, with custom commands.
 
 > Created with love, rage, and Node.js by [@HandOfHate](https://twitch.tv/HandOfHate)
 
