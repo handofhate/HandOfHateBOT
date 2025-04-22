@@ -82,15 +82,24 @@ npm run start:gui
 
 ```
 HandOfHateBOT/
-├── gui/                   # HTML/CSS/Renderer UI
-├── sounds/                # Drop .mp3 files here
-├── main.js                # Electron app entry point
-├── bot.js                 # Twitch bot logic
-├── renderer.js            # GUI logic
-├── config.js              # Auto-generated on first run
-├── config.blank.js        # Safe template for sharing
-├── package.json
-└── README.md
+├── gui/                   # GUI HTML/CSS for the control panel
+├── sounds/                # Drop .mp3 files here for sound commands
+├── app.css                # Tailwind input styles
+├── backup-local.bat       # Optional local backup script
+├── bot.js                 # Twitch bot core logic
+├── build-css.js           # Tailwind build helper (optional)
+├── config.blank.js        # Template config, safe to share
+├── config.js              # Auto-generated on first run (in .gitignore)
+├── main.js                # Electron entry point
+├── renderer.js            # GUI and renderer logic
+├── package.json           # Project metadata and dependencies
+├── package-lock.json      # Dependency lockfile
+├── postcss.config.js      # Tailwind/PostCSS build config
+├── tailwind.config.js     # Tailwind theming setup
+├── CHANGELOG.md           # Version history and patch notes
+├── README.md              # GitHub project overview
+├── .gitignore             # Excludes node_modules, config.js, etc.
+└── .gitattributes         # GitHub syntax/style helpers
 ```
 
 ---
