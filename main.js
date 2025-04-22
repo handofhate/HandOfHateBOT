@@ -4,6 +4,14 @@ const Store = require('electron-store').default;
 const store = new Store();
 const fs = require('fs');
 
+const configPath = path.join(__dirname, 'config.js');
+const blankConfigPath = path.join(__dirname, 'config.blank.js');
+
+if (!fs.existsSync(configPath)) {
+  fs.copyFileSync(blankConfigPath, configPath);
+  console.log('[ CONFIG INIT  ] config.js not found, created from config.blank.js');
+}
+
 let mainWindow = null;
 
 function createWindow() {

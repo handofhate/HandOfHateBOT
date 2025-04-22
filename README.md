@@ -1,185 +1,123 @@
-# 🧠 HandOfHateBOT Config Guide
+# 🤖 HandOfHateBOT
 
-Welcome to your **config.js setup guide**!  
-This guide will walk you through how to fill out the required fields to get the bot up and running.
+A custom Twitch bot built for serious stream automation.  
+Control lights, sound effects, OBS scenes, and even upload clips — all from a slick GUI dashboard.
+
+> Created with love, rage, and Node.js by [@HandOfHate](https://twitch.tv/HandOfHate)
 
 ---
 
-## 🎮 Twitch Setup
+## ⚡ Features
 
-You'll need four values for the `twitch` section:
+- 🎮 Twitch Chat Integration  
+- 💡 Philips Hue Light Control  
+- 🎥 OBS Source Toggle (WebSocket v5+)  
+- 🔊 Play Local Sound Effects from GUI or Chat  
+- 📎 Clip Watcher: Auto-uploads clips to Discord  
+- 🧪 Testing Mode for offline dev  
+- 🧠 Full Config Editor + Dashboard UI built with Tailwind/DaisyUI  
 
-### 1. `username`
-Your bot’s Twitch username (no @ symbol, lowercase).
+---
 
-```js
-username: 'handofhatebot'
+## 🚀 Setup Instructions
+
+### 1. 📦 Install Node.js
+Requires **Node.js v18+**  
+[Download Node.js](https://nodejs.org/en)
+
+---
+
+### 2. 🧬 Clone the Repo
+
+```bash
+git clone https://github.com/YOUR_USERNAME/HandOfHateBOT.git
+cd HandOfHateBOT
+```
+
+Or [download as ZIP](https://github.com/YOUR_USERNAME/HandOfHateBOT/archive/refs/heads/main.zip)
+
+---
+
+### 3. 🛠 Install Dependencies
+
+```bash
+npm install
 ```
 
 ---
 
-### 2. `oauth`
-Get your **OAuth token** here:  
-👉 https://twitchapps.com/tmi/
+### 4. 🔧 First Launch
 
-Paste the entire token, including the `oauth:` part.
+```bash
+npm run start:gui
+```
 
-```js
-oauth: 'oauth:xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'
+- If `config.js` doesn't exist, it will be auto-created from `config.blank.js`
+- All settings are editable from the **Config** tab in the GUI
+
+---
+
+## ⚙️ Configuration
+
+### 🔑 Sensitive values (OAuth, API keys, etc.)
+
+- All values are stored in `config.js`
+- Do **not** commit this file publicly
+- A safe template is provided as `config.blank.js`
+
+### 🧩 Editable Modules:
+
+- `Color Control` – Philips Hue  
+- `Sound Effects` – Local MP3s  
+- `OBS Toggles` – Scene/source visibility  
+- `Manual Commands` – Twitch chat injection  
+- `Clip Watcher` – Auto-uploads recorded clips to Discord  
+- `Stream Stats` – Viewer count + stream status  
+- `Chat Links` – !commands, !discord, !socials  
+- `Testing Mode` – Bypass Twitch & OBS for offline dev  
+
+---
+
+## 📂 Folder Structure
+
+```
+HandOfHateBOT/
+├── gui/                   # HTML/CSS/Renderer UI
+├── sounds/                # Drop .mp3 files here
+├── main.js                # Electron app entry point
+├── bot.js                 # Twitch bot logic
+├── renderer.js            # GUI logic
+├── config.js              # Auto-generated on first run
+├── config.blank.js        # Safe template for sharing
+├── package.json
+└── README.md
 ```
 
 ---
 
-### 3. `clientId` & `bearerToken`
+## 🧠 Developer Notes
 
-Go to: https://dev.twitch.tv/console/apps  
-Click **"Register Your Application"** if you don’t already have one.
+- Built with Electron, TailwindCSS, DaisyUI  
+- OBS uses WebSocket v5 protocol  
+- All features are modular and controlled from `config.modules`  
+- Designed to run via `npm`, but can be packaged with Electron Forge  
 
-Once created:
-- `clientId` is shown on the app page.
-- To get your `bearerToken` (OAuth Access Token), use one of the following:
-  - [Twitch Token Generator (Web)](https://twitchtokengenerator.com)
-  - [Twitch OAuth Token Guide (Docs)](https://dev.twitch.tv/docs/authentication/getting-tokens-oauth/)
-
-Example:
-
-```js
-clientId: 'your_client_id_here',
-bearerToken: 'your_bearer_token_here'
-```
+> `.exe` installer coming soon — current version is **portable / developer-friendly**
 
 ---
 
-## 💡 Philips Hue Setup
+## 🤝 Contributing
 
-### 1. `bridgeIp`
-You can find your Hue Bridge IP by:
-- Opening the **Philips Hue App** → Settings → Bridge Info
-- Or visiting: https://discovery.meethue.com/
-
-Example:
-```js
-bridgeIp: '192.168.1.2'
-```
+Pull requests welcome. If you'd like to help add features, fix bugs, or clean up code — go for it.  
+Open an issue or hit me up on Discord: [handofhate](https://discord.gg/yourdiscord)
 
 ---
 
-### 2. `apiKey` (Hue API Key)
+## 💀 License
 
-1. Visit in browser:  
-   `http://<your-bridge-ip>/debug/clip.html`
-2. Fill in:
-   - URL: `/api`
-   - Body: `{"devicetype":"handofhatebot"}`
-3. Click **POST**
-4. Press the button on your Hue Bridge
-5. Copy the returned `"username"` — that’s your API key
-
-```js
-apiKey: 'your_hue_api_key_here'
-```
+MIT License.  
+Use it, mod it, break it — just don’t be a jerk about it.
 
 ---
 
-### 3. `bulbIds`
-
-Visit:  
-`http://<your-bridge-ip>/api/<your-api-key>/lights`
-
-You’ll see something like:
-```json
-{
-  "1": {...},
-  "2": {...},
-  "3": {...}
-}
-```
-
-The numbers are your bulb IDs. Add them like so:
-
-```js
-bulbIds: [1, 2, 3]
-```
-
----
-
-## 🎥 OBS WebSocket Setup
-
-### 1. `websocketUrl`
-
-Default is:
-
-```js
-websocketUrl: 'ws://127.0.0.1:4455'
-```
-
-Make sure the **OBS WebSocket plugin** is installed:  
-👉 https://github.com/obsproject/obs-websocket
-
----
-
-### 2. `sceneName` & `sourceName`
-
-These must **exactly match** the scene/source names in your OBS setup.
-
-Example:
-
-```js
-sceneName: 'Mini CatCam',
-sourceName: 'CatCam'
-```
-
----
-
-## 🌐 Command Links & Socials
-
-These values live in the `links` section of your config.js.
-
-### 1. `commandsUrl`
-This should point to a web page where users can view all your chat commands.
-
-```js
-commandsUrl: 'https://commands.handofhate.com'
-```
-
----
-
-### 2. `discordInvite`
-Your public Discord server invite link:
-
-```js
-discordInvite: 'https://discord.gg/yourinvitecode'
-```
-
----
-
-### 3. `socialLinks`
-This is an array of your social media shoutouts for the `!socials` command.  
-Each entry is a string. You can customize the emojis, platforms, and format.
-
-Example:
-
-```js
-socialLinks: [
-  '📲 Follow me on social media:',
-  '📸 Instagram: ---> instagram.com/yourname',
-  '📘 Facebook: ---> facebook.com/yourname',
-  '🎵 TikTok: ---> tiktok.com/@yourname'
-]
-```
-
-You can add or remove lines freely.
-
----
-
-## ✅ Final Step
-
-Once you’ve filled out your `config.blank.js`, make sure to:
-
-- 💾 Rename it to `config.js` and save it in the same folder as `bot.js`
-- 🛑 **Never share it publicly** (add `config.js` to `.gitignore` if using Git)
-- 🚀 Run your bot and enjoy the stream automation!
-
----
-
-Made with 💀 by Ty @ [HandOfHate](https://twitch.tv/handofhate)
+### ⚡ Built for streamers who want control without compromise.

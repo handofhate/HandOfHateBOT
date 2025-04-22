@@ -14,6 +14,7 @@ logs/
 # Backups
 *-copy.js
 backups/
+backup-local.bat
 
 # Output or temp
 *.tmp

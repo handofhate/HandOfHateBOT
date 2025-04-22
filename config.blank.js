@@ -10,72 +10,107 @@ module.exports = {
     //             Twitch Credentials
     // =============================================
     twitch: {
-        // Your bot's Twitch username (lowercase, no @)
-        username: '',
-
-        // Your Twitch OAuth token
-        // Get one here: https://twitchapps.com/tmi/
-        oauth: '',
-
-        // Your Twitch Developer Client ID
-        clientId: '',
-
-        // Your Twitch App Access Token (Bearer token)
-        // Generated via Twitch API or OAuth flow
-        bearerToken: '',
-
-        // Your Twitch Channel Name
-        channel: '',
-
-        // Display name for your stream (used in bot messages like !uptime)
-        streamerName: ''
+      username: '',          // Twitch bot username (lowercase)
+      oauth: '',             // OAuth token from https://twitchapps.com/tmi/
+      clientId: '',          // Twitch Developer Client ID
+      clientSecret: '',      // Twitch Client Secret
+      bearerToken: '',       // App Access Token (bearer)
+      channel: '',           // Channel the bot will connect to
+      streamerName: ''       // Your name (for display in bot messages)
     },
-
+  
     // =============================================
     //           Philips Hue Settings
     // =============================================
     hue: {
-        // IP address of your Philips Hue Bridge
-        bridgeIp: '',
-
-        // API Key for the bridge
-        // Get one by creating a user via Hue API:
-        // https://developers.meethue.com/develop/hue-api/
-        apiKey: '',
-
-        // IDs of bulbs you want to control
-        bulbIds: [ ]
+      bridgeIp: '',          // IP of your Hue Bridge
+      apiKey: '',            // Hue API key from developer portal
+      bulbIds: [ ]           // IDs of the bulbs to control
     },
-
+  
     // =============================================
     //           OBS WebSocket Settings
     // =============================================
     obs: {
-        // WebSocket URL for OBS (default is fine unless changed)
-        websocketUrl: 'ws://127.0.0.1:4455',
-
-        // Scene and Source names used for toggling source
-        sceneName: '',
-        sourceName: ''
+      websocketUrl: 'ws://127.0.0.1:4455',
+      sceneName: '',
+      sourceName: ''
     },
-
+  
     // =============================================
     //           Command Links & Socials
     // =============================================
     links: {
-        // Link to your full commands list (e.g. a hosted commands page)
-        commandsUrl: 'commands.handofhate.com',
-
-        // Your public Discord invite link
-        discordInvite: 'discord.gg/fzjCEcsVns',
-
-        // Array of social media links (displayed on !socials)
-        // You can add/remove or customize as needed
-        socialLinks: [
-            '📲 Follow me on social media:',
-            '📸 Instagram: ---> instagram.com/handofhate',
-            '📘 Facebook: ---> facebook.com/handofhate',
-            '🎵 TikTok: ---> tiktok.com/@handofhate'
-        ]
-    }
-};
+      commandsUrl: '',       // e.g. https://commands.handofhate.com
+      discordInvite: '',     // e.g. https://discord.gg/yourcode
+      socialLinks: [
+        '📲 Follow me on social media:',
+        '📸 Instagram: ---> instagram.com/yourname',
+        '🎵 TikTok: ---> tiktok.com/@yourname'
+      ]
+    },
+  
+    // =============================================
+    //               Debug Flags
+    // =============================================
+    debug: {
+      logClean: false,
+      logColorDebugMessages: true,
+      logColorSuccessMessages: true,
+      logSoundDebugMessages: true,
+      logSoundSuccessMessages: true,
+      logOBSDebugMessages: true,
+      logOBSSuccessMessages: true,
+      logClipWatcherSuccessMessages: true,
+      logClipWatcherDebugMessages: true,
+      logUserChatMessages: true,
+      logBotChatMessages: true
+    },
+  
+    // =============================================
+    //               Enabled Modules
+    // =============================================
+    modules: {
+      colorControl: true,
+      soundEffects: true,
+      obsToggles: true,
+      manualCommands: true,
+      clipWatcher: true,
+      streamStats: true,
+      testingMode: true,
+      obsSourceToggles: true,
+      chatLinks: true
+    },
+  
+    // Order modules appear in the dashboard
+    modulesOrder: [
+      'colorControl',
+      'soundEffects',
+      'obsToggles',
+      'chatLinks',
+      'manualCommands',
+      'clipWatcher',
+      'streamStats',
+      'testingMode'
+    ],
+  
+    // =============================================
+    //             Clip Watcher Settings
+    // =============================================
+    clipFolder: '',                     // Local folder where OBS saves clips
+    discordWebhookUrl: '',             // Discord webhook to post clips
+    maxFileSizeMb: 8,                  // Max file size for clip upload (MB)
+  
+    knownGames: {
+      // Process names mapped to game names
+      'repo.exe': 'REPO',
+      'overwatch.exe': 'Overwatch 2',
+      'rust.exe': 'Rust',
+      'rustclient.exe': 'Rust',
+      'lethal company.exe': 'Lethal Company'
+    },
+  
+    deleteOriginalAfterPost: false,
+    deleteCompressedAfterPost: true
+  };
+  
