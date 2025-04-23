@@ -77,7 +77,7 @@ npm run start:gui
 - `Clip Watcher` – Auto-uploads recorded clips to Discord  
 - `Stream Stats` – Viewer count + stream status  
 - `Chat Links` – !commands, !discord, !socials  
-- `Testing Mode` – Bypass Twitch & OBS for offline dev  
+- `Testing Mode` – Simulate Twitch & OBS for offline dev  
 
 ---
 

@@ -436,12 +436,6 @@ function createSection(title, helpText = '', fields = [], moduleKey = null) {
         wrapper.appendChild(label);
 
         let input;
-        if (field.type === 'custom' && typeof field.render === 'function') {
-            const customEl = field.render();
-            wrapper.appendChild(customEl);
-            fieldGroup.appendChild(wrapper);
-            return;
-        }
         if (field.type === 'textarea') {
             input = document.createElement('textarea');
             input.className = 'textarea textarea-bordered w-full';
@@ -475,7 +469,6 @@ function createSection(title, helpText = '', fields = [], moduleKey = null) {
 
     section.appendChild(fieldGroup);
     container.appendChild(section);
-    return section;
 }
 
 function showToast(message, type = 'success') {
@@ -551,169 +544,16 @@ function renderFullConfig() {
         ], 'colorControl'),
 
         soundEffects: () => createSection('Sound Effects', 'Allows the bot to play sound effects via VLC Player from the Dashboard and Twitch Chat', [
-            {
-                label: 'Sound Effects Folder:',
-                type: 'custom',
-                render: () => {
-                    const wrapper = document.createElement('div');
-                    wrapper.className = 'flex items-center gap-2';
-
-                    const input = document.createElement('input');
-                    input.type = 'text';
-                    input.className = 'input input-bordered w-full';
-                    input.value = config.soundEffectsFolder;
-
-                    input.onchange = () => {
-                        config.soundEffectsFolder = input.value;
-                        debouncedSaveConfig();
-                    };
-
-                    const button = document.createElement('button');
-                    button.className = 'btn btn-square btn-error';
-                    button.innerHTML = '📁'; // or use an SVG later
-                    button.title = 'Choose Folder';
-
-                    button.onclick = async () => {
-                        const result = await ipcRenderer.invoke('clipbot:chooseFolder');
-                        if (result) {
-                            input.value = result;
-                            config.soundEffectsFolder = result;
-                            debouncedSaveConfig();
-                        }
-                    };
-
-                    wrapper.appendChild(input);
-                    wrapper.appendChild(button);
-                    return wrapper;
-                }
-            }
+            { label: 'Sound Effects Folder:', value: config.clipFolder, onChange: v => (config.clipFolder = v) }
         ], 'soundEffects'),
 
         obsToggles: () => {
-            const fields = [
-                {
-                    label: 'OBS WebSocket URL:',
-                    value: config.obs.websocketUrl,
-                    onChange: v => (config.obs.websocketUrl = v)
-                }
-            ];
-
-            // We'll add a placeholder for the dynamic sources here
-            const section = createSection(
+            return createSection(
                 'OBS Source Toggles',
                 'Each source will have its own toggle button on the dashboard and Twitch command (!name)',
-                fields,
+                [],
                 'obsToggles'
             );
-
-            // Inject dynamic source editor
-            const fieldGroup = section.querySelector('.space-y-2:last-of-type');
-            const sourceList = document.createElement('div');
-            sourceList.id = 'obsSourceList';
-            sourceList.className = 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4';
-
-            const sectionHeader = document.createElement('div');
-            sectionHeader.className = 'pt-4 mt-4 border-t border-base-300';
-
-            const heading = document.createElement('h4');
-            heading.className = 'text-md font-semibold text-base-content mb-2';
-            heading.textContent = '🎬 OBS Sources';
-
-            sectionHeader.appendChild(heading);
-            fieldGroup.appendChild(sectionHeader);
-
-
-            config.obs.toggleSources.forEach((source, index) => {
-                const wrapper = document.createElement('div');
-                wrapper.className = 'border border-base-300 px-6 pt-6 pb-6 rounded-md bg-base-100';
-
-                ['name', 'sceneName', 'sourceName', 'duration', 'label'].forEach(key => {
-                    const fieldWrapper = document.createElement('div');
-                    fieldWrapper.className = 'mb-4';
-                    if (key === 'name') fieldWrapper.className += ' mt-4';
-
-                    const label = document.createElement('label');
-                    label.className = 'block text-sm font-medium mt-2 mb-2';
-                    const labels = {
-                        name: 'Chat Command (!command)',
-                        sceneName: 'Scene Name',
-                        sourceName: 'Source Name',
-                        duration: 'Toggle Duration (seconds)',
-                        label: 'Dashboard Label'
-                    };
-                    label.textContent = labels[key] || key;
-
-                    const input = document.createElement('input');
-                    input.type = key === 'duration' ? 'number' : 'text';
-                    input.className = 'input input-bordered w-full';
-
-                    if (key === 'duration') {
-                        input.value = source[key] / 1000; // Convert ms → seconds
-                        input.step = '1';
-                        input.min = '1';
-                    } else {
-                        input.value = source[key];
-                    }
-
-                    input.onchange = () => {
-                        config.obs.toggleSources[index][key] =
-                            key === 'duration' ? parseInt(input.value) * 1000 : input.value;
-                        debouncedSaveConfig();
-                    };
-
-                    if (key === 'name') {
-                        const inputGroup = document.createElement('div');
-                        inputGroup.className = 'flex items-center gap-2';
-
-                        const prefix = document.createElement('span');
-                        prefix.textContent = '!';
-                        prefix.className = 'text-lg font-bold';
-
-                        inputGroup.appendChild(prefix);
-                        inputGroup.appendChild(input);
-                        fieldWrapper.appendChild(label);
-                        fieldWrapper.appendChild(inputGroup);
-                    } else {
-                        fieldWrapper.appendChild(label);
-                        fieldWrapper.appendChild(input);
-                    }
-
-                    wrapper.appendChild(fieldWrapper);
-                });
-
-                const removeBtn = document.createElement('button');
-                removeBtn.textContent = 'Remove Source';
-                removeBtn.className = 'btn btn-sm btn-error mt-2';
-                removeBtn.onclick = () => {
-                    config.obs.toggleSources.splice(index, 1);
-                    saveConfig();
-                    renderFullConfig(); // Re-render after removing
-                };
-                wrapper.appendChild(removeBtn);
-
-                sourceList.appendChild(wrapper);
-            });
-
-            // ➕ Add Source Button
-            const addBtn = document.createElement('button');
-            addBtn.textContent = '➕ Add New OBS Source';
-            addBtn.className = 'btn btn-outline btn-info w-full mt-2';
-            addBtn.onclick = () => {
-                config.obs.toggleSources.push({
-                    name: '',
-                    sceneName: '',
-                    sourceName: '',
-                    duration: 10000,
-                    label: ''
-                });
-                saveConfig();
-                renderFullConfig(); // Re-render after adding
-            };
-
-            fieldGroup.appendChild(sourceList);
-            fieldGroup.appendChild(addBtn);
-
-            return section;
         },
 
         chatLinks: () => createSection('Chat Links', 'Allows the bot to respond to some common commands in Twitch Chat', [
@@ -732,118 +572,20 @@ function renderFullConfig() {
         manualCommands: () => createSection('Manual Commands', 'Allows manual commands to be sent from the Dashboard', [], 'manualCommands'),
 
         clipWatcher: () => createSection('Clip Watcher', 'Auto-posts saved clips to Discord', [
-            {
-                label: 'Clips Folder:',
-                type: 'custom',
-                render: () => {
-                    const wrapper = document.createElement('div');
-                    wrapper.className = 'flex items-center gap-2';
-
-                    const input = document.createElement('input');
-                    input.type = 'text';
-                    input.className = 'input input-bordered w-full';
-                    input.value = config.clipFolder;
-
-                    input.onchange = () => {
-                        config.clipFolder = input.value;
-                        debouncedSaveConfig();
-                    };
-
-                    const button = document.createElement('button');
-                    button.className = 'btn btn-square btn-error hover:brightness-110 transition-all';
-                    button.innerHTML = '📁';
-                    button.title = 'Choose Folder';
-
-                    button.onclick = async () => {
-                        const result = await ipcRenderer.invoke('clipbot:chooseFolder');
-                        if (result) {
-                            input.value = result;
-                            config.clipFolder = result;
-                            debouncedSaveConfig();
-                        }
-                    };
-
-                    wrapper.appendChild(input);
-                    wrapper.appendChild(button);
-                    return wrapper;
-                }
-            },
+            { label: 'Clips Folder:', value: config.clipFolder, onChange: v => (config.clipFolder = v) },
             { label: 'Discord Webhook URL:', value: config.discordWebhookUrl, onChange: v => (config.discordWebhookUrl = v) },
             { label: 'Maximum File Size (Mb):', value: config.maxFileSizeMb, onChange: v => (config.maxFileSizeMb = Number(v)) },
             {
                 label: 'Game List:',
-                type: 'custom',
-                render: () => {
-                    const wrapper = document.createElement('div');
-                    wrapper.className = 'space-y-3';
-
-                    // Input Row
-                    const inputRow = document.createElement('div');
-                    inputRow.className = 'flex flex-wrap gap-2 items-end';
-
-                    const procInput = document.createElement('input');
-                    procInput.type = 'text';
-                    procInput.placeholder = 'e.g. overwatch.exe';
-                    procInput.className = 'input input-bordered flex-1 min-w-[150px]';
-
-                    const nameInput = document.createElement('input');
-                    nameInput.type = 'text';
-                    nameInput.placeholder = 'e.g. Overwatch 2';
-                    nameInput.className = 'input input-bordered flex-1 min-w-[150px]';
-
-                    const addButton = document.createElement('button');
-                    addButton.textContent = '➕ Add Game';
-                    addButton.className = 'btn btn-accent';
-                    addButton.onclick = () => {
-                        const proc = procInput.value.trim().toLowerCase();
-                        const name = nameInput.value.trim();
-                        if (proc && name) {
-                            config.knownGames[proc] = name;
-                            procInput.value = '';
-                            nameInput.value = '';
-                            saveConfig();
-                            renderGameList(); // Refresh list
-                        }
-                    };
-
-                    inputRow.appendChild(procInput);
-                    inputRow.appendChild(nameInput);
-                    inputRow.appendChild(addButton);
-                    wrapper.appendChild(inputRow);
-
-                    // Game List Display
-                    const gameList = document.createElement('div');
-                    gameList.id = 'knownGameList';
-                    gameList.className = 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3';
-                    wrapper.appendChild(gameList);
-
-                    function renderGameList() {
-                        gameList.innerHTML = '';
-                        for (const [proc, name] of Object.entries(config.knownGames)) {
-                            const card = document.createElement('div');
-                            card.className = 'border border-base-300 p-4 rounded-md bg-base-100 flex items-center justify-between gap-4';
-
-                            const label = document.createElement('div');
-                            label.innerHTML = `<span class="font-mono text-sm">${proc}</span> → <span>${name}</span>`;
-
-                            const removeBtn = document.createElement('button');
-                            removeBtn.textContent = '❌';
-                            removeBtn.className = 'btn btn-sm btn-neutral';
-                            removeBtn.onclick = () => {
-                                delete config.knownGames[proc];
-                                saveConfig();
-                                renderGameList();
-                            };
-
-                            card.appendChild(label);
-                            card.appendChild(removeBtn);
-                            gameList.appendChild(card);
-                        }
-                    }
-
-                    renderGameList();
-                    return wrapper;
-                }
+                value: Object.entries(config.knownGames).map(([k, v]) => `${k}=${v}`).join('\n'),
+                onChange: v => {
+                    config.knownGames = {};
+                    v.split('\n').forEach(line => {
+                        const [key, val] = line.split('=').map(x => x.trim());
+                        if (key && val) config.knownGames[key] = val;
+                    });
+                },
+                type: 'textarea'
             },
             {
                 label: 'Delete Original Clip After Posting:',

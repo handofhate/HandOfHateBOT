@@ -4,11 +4,16 @@ const Store = require('electron-store').default;
 const store = new Store();
 const fs = require('fs');
 
-const configPath = path.join(__dirname, 'config.js');
+const loadConfig = require('./utils/loadConfig');
+const config = loadConfig();
+
+console.log('[ MAIN CONFIG ] Loaded config. Twitch user:', config?.twitch?.username);
+
+const configFilePath = path.join(__dirname, 'config.js');
 const blankConfigPath = path.join(__dirname, 'config.blank.js');
 
-if (!fs.existsSync(configPath)) {
-  fs.copyFileSync(blankConfigPath, configPath);
+if (!fs.existsSync(configFilePath)) {
+  fs.copyFileSync(blankConfigPath, configFilePath);
   console.log('[ CONFIG INIT  ] config.js not found, created from config.blank.js');
 }
 
@@ -36,6 +41,20 @@ function createWindow() {
 	mainWindow.on('move', () => store.set('windowBounds', mainWindow.getBounds()));
 
 }
+
+const { dialog } = require('electron');
+
+ipcMain.handle('clipbot:chooseFolder', async () => {
+  const result = await dialog.showOpenDialog({
+    properties: ['openDirectory']
+  });
+
+  if (result.canceled || result.filePaths.length === 0) {
+    return null;
+  }
+
+  return result.filePaths[0];
+});
 
 app.whenReady().then(createWindow);
 

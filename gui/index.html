@@ -7,161 +7,62 @@
 	<link href="./style.css" rel="stylesheet">
 </head>
 
-<body data-theme="cyberpunk" class="h-screen flex flex-col">
-	<!-- 💀 Page Header -->
-	<h1 class="text-4xl font-bold text-center text-secondary p-4">🤖 HandOfHateBOT Control Panel</h1>
+<body data-theme="cyberpunk" class="h-screen flex flex-col overflow-hidden">
 
 	<!-- 🗂️ Tabs -->
-	<div class="tabs tabs-boxed justify-center mb-4">
+	<div class="tabs tabs-boxed justify-center mt-4 mb-4">
 		<a class="tab tab-active" onclick="switchTab('dashboard')">Dashboard</a>
 		<a class="tab" onclick="switchTab('logs')">Logs</a>
 		<a class="tab" onclick="switchTab('config')">Config</a>
-		<a class="tab" onclick="switchTab('debug')">Debug</a>
 	</div>
 
 	<!-- 📦 Main Content Wrapper -->
-	<div class="flex-1 overflow-y-auto px-6 pb-6">
-		<!-- 🚀 Dashboard Tab -->
-		<div id="dashboardTab" class="tabContent grid grid-cols-1 md:grid-cols-2 gap-6">
+	<div class="flex-1 overflow-y-auto pb-6"
+		style="padding-left: 2.5rem; padding-right: 1.5rem; scrollbar-gutter: stable;">
 
-			<!-- 🔘 Start / Stop Controls -->
-			<div class="flex gap-4 items-center">
+		<!-- 🔘 Start / Stop Controls (visible on all tabs + centered) -->
+		<div class="w-full flex justify-center mb-8 pb-6">
+			<div class="flex gap-4 items-center bg-base-300 p-4 rounded-lg shadow-lg">
 				<button id="startBot" class="btn btn-success">▶ Start Bot</button>
 				<button id="stopBot" class="btn btn-error" disabled>⛔ Stop Bot</button>
 				<span id="status" class="ml-2 font-medium text-warning">Bot not running.</span>
 			</div>
+		</div>
 
-			<!-- 🧪 Testing Mode -->
-			<div id="section-testingMode" data-module="testingMode" class="card bg-base-300 shadow-lg p-4 space-y-4">
-				<h3 class="text-xl font-bold text-accent">🧪 Testing Mode</h3>
-				<div class="form-control">
-					<label class="label cursor-pointer justify-between">
-						<span class="label-text">Bypass connection to Twitch</span>
-						<input type="checkbox" id="bypassTwitch" class="toggle toggle-warning">
-					</label>
-				</div>
-				<div class="form-control">
-					<label class="label cursor-pointer justify-between">
-						<span class="label-text">Simulate connection to OBS WebSocket</span>
-						<input type="checkbox" id="simulateOBS" class="toggle toggle-info">
-					</label>
-				</div>
-				<div class="form-control">
-					<label class="label cursor-pointer justify-between">
-						<span class="label-text">Simulate connection to Discord</span>
-						<input type="checkbox" id="simulateDiscord" class="toggle toggle-info">
-					</label>
-				</div>
-				<button id="updateTestFlagsBtn" class="btn btn-outline btn-secondary">🔧 Update Testing Mode</button>
-			</div>
-
-			<!-- 📡 Stream Info -->
-			<div id="section-streamStats" data-module="streamStats" class="stats shadow w-fit">
-				<div class="stat">
-					<div class="stat-title">📡 Stream</div>
-					<div class="stat-value text-error" id="streamStatus">Offline</div>
-				</div>
-				<div class="stat">
-					<div class="stat-title">👀 Viewers</div>
-					<div class="stat-value" id="viewerCount">0</div>
-				</div>
-			</div>
-
-			<!-- 💡 Color Control -->
-			<div id="section-colorControl" data-module="colorControl">
-				<h3 class="text-xl font-bold mb-2">💡 Color Control</h3>
-				<div class="flex flex-wrap gap-2">
-					<button class="btn btn-sm bg-red-600 hover:bg-red-700 text-white"
-						onclick="window.sendCommand('!red')">Red</button>
-					<button class="btn btn-sm bg-green-600 hover:bg-green-700 text-white"
-						onclick="window.sendCommand('!green')">Green</button>
-					<button class="btn btn-sm bg-blue-600 hover:bg-blue-700 text-white"
-						onclick="window.sendCommand('!blue')">Blue</button>
-					<button class="btn btn-sm bg-yellow-400 hover:bg-yellow-500 text-black"
-						onclick="window.sendCommand('!yellow')">Yellow</button>
-					<button class="btn btn-sm bg-purple-600 hover:bg-purple-700 text-white"
-						onclick="window.sendCommand('!purple')">Purple</button>
-					<button class="btn btn-sm bg-cyan-500 hover:bg-cyan-600 text-black"
-						onclick="window.sendCommand('!cyan')">Cyan</button>
-					<button class="btn btn-sm bg-pink-500 hover:bg-pink-600 text-white"
-						onclick="window.sendCommand('!magenta')">Magenta</button>
-					<button class="btn btn-sm bg-orange-500 hover:bg-orange-600 text-white"
-						onclick="window.sendCommand('!orange')">Orange</button>
-					<button class="btn btn-sm bg-white text-black border border-gray-300 hover:bg-gray-200"
-						onclick="window.sendCommand('!white')">White</button>
-					<button class="btn btn-sm bg-black text-white hover:bg-gray-800"
-						onclick="window.sendCommand('!black')">Black</button>
-					<button
-						class="btn btn-sm bg-gradient-to-r from-pink-500 via-purple-500 to-blue-500 text-white hover:brightness-110"
-						onclick="window.sendCommand('!randomcolor')">Random</button>
-				</div>
-			</div>
-
-			<!-- 🔊 Sound Effects -->
-			<div id="section-soundEffects" data-module="soundEffects">
-				<h3 class="text-xl font-bold mb-2">🔊 Sound Effects</h3>
-				<div class="flex flex-wrap gap-2" id="soundButtons"></div>
-				<button class="btn btn-outline btn-info mt-2" id="refreshSoundsBtn"
-					onclick="window.loadSoundButtons()">🔄 Refresh Sound Effects</button>
-			</div>
-
-			<!-- 🎥 OBS Source Toggle -->
-			<div id="section-obsToggles" data-module="obsToggles">
-				<h3 class="text-xl font-bold mb-2">🎥 Toggle OBS Source</h3>
-				<button class="btn btn-primary btn-sm" id="toggleObs">🎬 Toggle Source</button>
-			</div>
-
-			<!-- 🔗 Chat Links -->
-			<div id="section-chatLinks" data-module="chatLinks" class="card bg-base-300 shadow-lg p-4 space-y-4">
-				<h3 class="text-xl font-bold text-accent">🔗 Chat Links</h3>
-				<div class="flex flex-wrap gap-2">
-					<button class="btn btn-sm btn-outline" onclick="window.sendCommand('!commands')">!commands</button>
-					<button class="btn btn-sm btn-outline" onclick="window.sendCommand('!discord')">!discord</button>
-					<button class="btn btn-sm btn-outline" onclick="window.sendCommand('!socials')">!socials</button>
-				</div>
-			</div>
-
-			<!-- ⌨️ Manual Command Entry -->
-			<div id="section-manualCommands" data-module="manualCommands">
-				<h3 class="text-xl font-bold mb-2">⌨️ Manual Command Entry</h3>
-				<div class="flex gap-2">
-					<input type="text" id="manualCommand" placeholder="Type a command like !uptime or !color 12345"
-						class="input input-bordered w-full max-w-md" />
-					<button class="btn btn-secondary" onclick="handleSendClick()">Send</button>
-				</div>
-			</div>
-
-			<!-- 📎 Clip Watcher -->
-			<div class="card bg-base-300 shadow-lg p-4" data-module="clipWatcher">
-				<h3 class="text-xl font-bold text-accent mb-2">📎 Clip Watcher</h3>
-				<p class="text-sm text-neutral-content">📡 Watching folder: <span id="clipFolderDisplay">(not
-						set)</span></p>
-				<button id="restartClipWatcherBtn" class="btn btn-outline btn-sm w-full mt-2">Restart Clip
-					Watcher</button>
-			</div>
-
-		</div> <!-- end #dashboardTab -->
+<!-- 🚀 Dashboard Tab -->
+<div id="dashboardTab" class="tabContent">
+	<div id="dashboardGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-start">
+		<!-- modules will be injected dynamically -->
+	</div>
+</div>
 
 		<!-- 🧾 Logs Tab -->
-		<div id="logsTab" class="tabContent hidden flex flex-col h-full">
-			<div class="flex-1 flex flex-col">
-				<pre id="logOutput"
-					class="bg-black text-green-400 p-4 rounded-md flex-1 overflow-y-auto w-full whitespace-pre-wrap"></pre>
+		<div id="logsTab" class="tabContent hidden relative h-[calc(100vh-9rem)]">
+			<!-- ⚙️ Gear Icon (finally works) -->
+			<button id="toggleDebugPopup"
+				class="btn btn-circle btn-sm btn-ghost text-xl absolute top-4 right-4 z-50">⚙️</button>
+
+			<!-- 🐞 Debug Popup -->
+			<div id="debugPopup"
+				class="hidden absolute top-16 right-6 bg-base-200 border border-base-300 rounded-lg shadow-lg p-4 space-y-4 z-50 w-72">
+				<h3 class="text-lg font-bold text-accent">🐞 Debug Flags</h3>
+				<div id="debugFlags" class="space-y-2"></div>
+				<button id="saveDebugConfig" class="btn btn-sm btn-success">💾 Save Debug Settings</button>
+			</div>
+
+			<!-- 📄 Scrollable Log Area -->
+			<div class="absolute top-16 bottom-0 left-0 right-0 overflow-y-auto px-4 pb-4">
+				<div id="logOutput"
+					class="bg-black text-green-400 p-4 rounded-md w-full h-full overflow-y-auto whitespace-pre-wrap font-mono">
+				</div>
 			</div>
 		</div>
 
 		<!-- 🛠 Config Tab -->
-		<div id="configTab" class="tabContent hidden space-y-4">
-			<h2 class="text-xl font-bold text-accent">Configuration Settings</h2>
+		<div id="configTab" class="tabContent hidden relative h-[calc(100vh-9rem)]">
+			<h2 class="text-xl font-bold text-accent mb-4">Configuration Settings</h2>
 			<div id="configForm" class="space-y-2"></div>
 			<button class="btn btn-success" id="saveFullConfig">💾 Save to config.js</button>
-		</div>
-
-		<!-- 🐞 Debug Tab -->
-		<div id="debugTab" class="tabContent hidden space-y-4">
-			<h2 class="text-xl font-bold text-accent">Debug Settings</h2>
-			<div id="debugFlags"></div>
-			<button class="btn btn-warning" id="saveDebugConfig">💾 Save to config.js</button>
 		</div>
 	</div> <!-- End scrollable container -->
 

@@ -42,14 +42,18 @@ const { exec } = require('child_process');
 const fs = require('fs');
 const player = require('play-sound')();
 const path = require('path');
-const config = require('./config');
+const loadConfig = require('./utils/loadConfig');
+const config = loadConfig();
+
+console.log('[ BOT CONFIG  ] Loaded config for:', config.twitch?.username);
+
 const chokidar = require('chokidar');
 const { execFile } = require('child_process');
 const FormData = require('form-data');
 const psList = require('ps-list').default;
 
 const args = process.argv.slice(2);
-let BYPASS_TWITCH = args.includes('--bypass-twitch');
+let BYPASS_TWITCH = args.includes('--Simulate-twitch');
 let SIMULATE_OBS = args.includes('--simulate-obs');
 let SIMULATE_DISCORD = args.includes('--simulate-discord');
 let clipWatcher = {
@@ -59,7 +63,7 @@ let clipWatcher = {
 };
 
 if (BYPASS_TWITCH) {
-    console.log('[ TWITCH TEST  ] Bypassing Twitch connection');
+    console.log('[ TWITCH TEST  ] Simulating Twitch connection');
 }
 if (SIMULATE_OBS) {
     console.log('[ OBS TEST     ] Simulating OBS WebSocket');
@@ -75,20 +79,20 @@ if (!SIMULATE_OBS) {
         console.error('[ OBS ERROR    ] Failed to connect to OBS WebSocket:', err);
     });
 }
-function updateTestModeFlags({ bypassTwitch, simulateOBS, simulateDiscord }) {
-    const prevBypass = BYPASS_TWITCH;
+function updateTestModeFlags({ simulateTwitch, simulateOBS, simulateDiscord }) {
+    const prevSimulate = BYPASS_TWITCH;
     const prevSimOBS = SIMULATE_OBS;
     const prevSimDiscord = SIMULATE_DISCORD;
     clipWatcher.config.simulateDiscord = simulateDiscord;
 
-    BYPASS_TWITCH = bypassTwitch;
+    BYPASS_TWITCH = simulateTwitch;
     SIMULATE_OBS = simulateOBS;
     SIMULATE_DISCORD = simulateDiscord;
 
-    if (prevBypass !== bypassTwitch || prevSimOBS !== simulateOBS || prevSimDiscord !== simulateDiscord) {
-        console.log(`[ SYSTEM OK    ] Updated test mode flags: Twitch=${bypassTwitch}, OBS=${simulateOBS}, Discord=${simulateDiscord}`);
+    if (prevSimulate !== simulateTwitch || prevSimOBS !== simulateOBS || prevSimDiscord !== simulateDiscord) {
+        console.log(`[ SYSTEM OK    ] Updated test mode flags: Twitch=${simulateTwitch}, OBS=${simulateOBS}, Discord=${simulateDiscord}`);
     } else {
-        console.log(`[ SYSTEM OK    ] Test mode flags unchanged: Twitch=${bypassTwitch}, OBS=${simulateOBS}, Discord=${simulateDiscord}`);
+        console.log(`[ SYSTEM OK    ] Test mode flags unchanged: Twitch=${simulateTwitch}, OBS=${simulateOBS}, Discord=${simulateDiscord}`);
     }
 }
 module.exports.updateTestModeFlags = updateTestModeFlags;
@@ -98,7 +102,7 @@ module.exports.updateTestModeFlags = updateTestModeFlags;
 // 		Bot Configuration
 // =============================================
 
-const BOT_VERSION = '1.2.0 (Apr 20, 2025)';
+const BOT_VERSION = '1.2.1 (Apr 23, 2025)';
 const client = new tmi.Client({
     options: { debug: false },
     connection: {
@@ -220,7 +224,7 @@ function startClipWatcher() {
     debugLog('logClipWatcherSuccessMessages', '[ CLIP OK      ] Started watching for new clips');
     if (SIMULATE_DISCORD) {
         console.log('[ CLIP TEST    ] Simulating Discord Webhook');
-    }    
+    }
 }
 
 // =============================================
@@ -412,11 +416,28 @@ function handleCommand(channel, tags, message) {
     const parts = message.split(' ');
     const command = parts[0].toLowerCase();
 
+    // 🎥 OBS Source Toggle Command
+    const matchedSource = config.obs?.toggleSources?.find(
+        s => command === `!${s.name.toLowerCase()}`
+    );
+
+    if (matchedSource) {
+        toggleObsSceneItem({
+            sceneName: matchedSource.sceneName,
+            sourceName: matchedSource.sourceName,
+            duration: matchedSource.duration,
+            channel,
+            successMessage: `${matchedSource.label} activated!`,
+            failMessage: `Failed to activate ${matchedSource.label}.`
+        });
+        return;
+    }
+
     if (command === '!testflags' && username === 'GUI') {
-        const bypassTwitch = parts[1] === 'true';
+        const simulateTwitch = parts[1] === 'true';
         const simulateOBS = parts[2] === 'true';
         const simulateDiscord = parts[3] === 'true';
-        updateTestModeFlags({ bypassTwitch, simulateOBS, simulateDiscord });
+        updateTestModeFlags({ simulateTwitch, simulateOBS, simulateDiscord });
 
         // Always confirm receipt of update, even if unchanged
         console.log(`[ SYSTEM OK    ] Test mode flags now: Twitch=${BYPASS_TWITCH}, OBS=${SIMULATE_OBS}, Discord=${SIMULATE_DISCORD}`);
@@ -552,18 +573,6 @@ function handleCommand(channel, tags, message) {
         return;
     }
 
-    if (command === `!${CONFIG.constants.obs.sourceName.toLowerCase()}`) {
-        toggleObsSceneItem({
-            sceneName: CONFIG.constants.obs.sceneName,
-            sourceName: CONFIG.constants.obs.sourceName,
-            duration: CONFIG.timing.obsToggleDuration,
-            channel,
-            successMessage: `${CONFIG.constants.emojis.cat} ${CONFIG.constants.obs.sourceName} is now live for 10 seconds.`,
-            failMessage: `${CONFIG.constants.emojis.warning} Failed to toggle ${CONFIG.constants.obs.sourceName}.`
-        });
-        return;
-    }
-
     if (textCommands[command]) {
         const response = textCommands[command];
         if (typeof response === 'string') {
@@ -619,12 +628,12 @@ if (config.modules?.clipWatcher !== false) {
         ...config,
         simulateDiscord: SIMULATE_DISCORD,
         simulateOBS: SIMULATE_OBS,
-        bypassTwitch: BYPASS_TWITCH
-    };    
+        simulateTwitch: BYPASS_TWITCH
+    };
 
     if (clipWatcher.config.simulateDiscord) {
         console.log('[ CLIP TEST    ] Simulating Discord Webhook');
-    }    
+    }
 
     console.log('[ DEBUG       ] About to start clip watcher...');
     startClipWatcher();

@@ -10,7 +10,7 @@
 
 ### ✨ Added
 - Merged ClipWatcher directly into the main bot process
-- Added runtime test flag handling (bypassTwitch, simulateOBS, simulateDiscord)
+- Added runtime test flag handling (simulateTwitch, simulateOBS, simulateDiscord)
 - GUI flag changes send live updates via stdin
 - Fake Discord webhook posts for testing
 
@@ -46,7 +46,7 @@
 - Debug tab with toggles for all debug flags in config.js
 
 ### 🧪 Testing
-- Toggle test flags for Twitch and OBS (bypass/simulate) directly from GUI
+- Toggle test flags for Twitch and OBS (Simulate/simulate) directly from GUI
 - Test flag logic flows through to bot process without restart
 
 ### 🔧 Improved
