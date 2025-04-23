@@ -1,5 +1,30 @@
 # Changelog
 
+## [1.2.1] - 2025-04-23
+
+### 🚨 Major Update: Dynamic Module Reordering & Enhanced OBS Source Toggles
+- **Live Module Reordering**: Now reflects changes in both the dashboard and the config tab in real time.
+- **OBS Source Toggles**: Improved with dynamic input fields for better usability.
+- **Sound Effect Management**: Added a refresh button for sound effects and improved button functionality in the GUI.
+
+### ✨ Added
+- Live reordering of modules in the config tab and dashboard.
+- Dynamic input fields for OBS source toggles.
+- Sound effect refresh functionality in the GUI.
+- Config tab improvements for better UI clarity and navigation.
+
+### 🔧 Improved
+- Streamlined UI elements for the config tab.
+- Enhanced handling of module visibility during reordering.
+- Refined OBS WebSocket connection handling and error messages.
+
+### 🐛 Fixed
+- Fixed broken visibility of modules after reordering in the config tab.
+- Corrected issues with OBS WebSocket connection stability.
+- Addressed layout problems with the config tab, improving consistency and responsiveness.
+
+---
+
 ## [1.2.0] - 2025-04-21
 
 ### 🚨 Major Update: ClipWatcher + Test Mode Enhancements
