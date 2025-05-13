@@ -18,6 +18,7 @@ logs/
 *-copy.js
 backups/
 backup-local.bat
+zip-void.bat
 
 # Output or temp
 *.tmp
@@ -43,3 +44,6 @@ VOiD.code-workspace
 
 # Personal dev notes
 TODO.md
+
+# Ignore release zips
+*.zip
