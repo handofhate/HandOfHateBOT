@@ -16,12 +16,12 @@ const voidInfo = {
   title: 'About VOiD',
   content: `
 <h2 style="text-align:center;">Welcome to the VOiD.</h2>
-<br>
+
 <div style="text-align:center;">
   VOiD is your all-in-one control hub for stream automation and chat integration.
-  <br><br>
+  <br>
   Built for streamers who want precision tools without bloated software.
-  <br><br><br>
+  <br><br>
   <strong>What VOiD does best:</strong>
   <br><br>
 </div>
@@ -41,14 +41,11 @@ const voidInfo = {
     <li>OBS Dockable window generation</li>
   </ul>
 </div>
-
-<br>
-
 <h3 style="text-align:center;">Made by a streamer. For streamers.</h3>
 <br>
 <div style="text-align:center; font-size: 0.9rem;">
   Version: <code>${version}</code><br>
-  Created by <strong>Ty</strong> (aka <em>handofhate</em>)<br><br><br>
+  Created by <strong>Ty</strong> (aka <em>handofhate</em>)<br><br>
   Questions? Suggestions? Bugs?<br>
   Join our Discord or contact me via the links below.
 </div>
@@ -56,8 +53,18 @@ const voidInfo = {
 <br>
 
 ---
-
 <div id="void-social-buttons" style="margin-top: 2rem;"></div>
+<br>
+
+---
+
+<br>
+
+<div style="text-align:center; font-size: 0.9rem;">
+  💀 Enjoying VOiD? Help keep it alive:<br>
+  <a href="https://ko-fi.com/handofhate" target="_blank">Support VOiD on Ko-fi</a> | 
+  <a href="https://paypal.me/handofhate" target="_blank">Donate via PayPal</a>
+</div>
   `,
 };
 

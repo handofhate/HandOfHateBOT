@@ -11,6 +11,10 @@ A powerful stream automation dashboard for Twitch streamers. Enhance your entire
 
 > Created by [@HandOfHate](https://twitch.tv/HandOfHate)
 
+[![Donate](https://img.shields.io/badge/Donate-Keep%20VOiD%20alive-blueviolet?style=flat&logo=ko-fi)](https://ko-fi.com/handofhate)
+
+> 💀 Like VOiD? [Support development on Ko-fi](https://ko-fi.com/handofhate) or [donate via PayPal](https://paypal.me/handofhate) to keep the lights blinking.
+
 ---
 
 ## ✨ Preview
