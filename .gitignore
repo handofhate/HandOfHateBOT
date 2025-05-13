@@ -40,3 +40,6 @@ Thumbs.db
 .prettierrc
 .prettierignore
 VOiD.code-workspace
+
+# Personal dev notes
+TODO.md
