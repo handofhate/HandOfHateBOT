@@ -1,6 +1,18 @@
-// utils/loadConfig.js
+// ==============================================
+//                 loadConfig.js
+// ==============================================
+
+// ==============================================
+//                 Initial Setup
+// ==============================================
+
 const fs = require('fs');
 const path = require('path');
+const log = require('../gui/ui/logger')('LOADCON');
+
+// ==============================================
+//                 Load config.js
+// ==============================================
 
 function loadConfig() {
   const configPath = path.join(__dirname, '..', 'config.js');
@@ -8,17 +20,19 @@ function loadConfig() {
   try {
     const raw = fs.readFileSync(configPath, 'utf-8');
 
-    // Use Function constructor to avoid require() caching
     const load = new Function('module', raw);
     const module = { exports: {} };
     load(module);
 
-    console.log('[ CONFIG LOAD ] Loaded config.js successfully');
     return module.exports;
   } catch (err) {
-    console.error('[ CONFIG ERROR ] Failed to load config.js:', err);
+    log.error('Failed to load config.js:', err);
     return {};
   }
 }
+
+// ==============================================
+//                    Exports
+// ==============================================
 
 module.exports = loadConfig;

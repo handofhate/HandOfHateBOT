@@ -1,1339 +1,236 @@
-// =============================================
-//    renderer.js — Part 1: Core Setup + Modules
-// =============================================
+// ==============================================
+//                  renderer.js
+// ==============================================
 
-const { spawn } = require('child_process');
-const path = require('path');
-const fs = require('fs');
-const configPath = path.join(__dirname, '..', 'config.js');
-const WebSocket = require('ws');
-
-const loadConfig = require('../utils/loadConfig');
-// Immediately after loading config
-const config = loadConfig();
-
-// ✅ Ensure testing config exists
-if (!config.testing) {
-    config.testing = {
-        simulateTwitch: false,
-        simulateOBS: false,
-        simulateDiscord: false
-    };
-}
+// ==============================================
+//                 Initial Setup
+// ==============================================
 
 const { ipcRenderer } = require('electron');
+const { initBotControls } = require('./ui/botControls');
+const { initConfigManager } = require('./ui/configManager');
+const { initUIManager } = require('./ui/uiManager');
+const { renderDashboard } = require('./ui/dashboardManager');
+const { initDashboardManager } = require('./ui/dashboardManager');
+const { initTabManager } = require('./ui/tabManager');
+const log = require('./ui/logger')('RENDER');
+const logger = require('../gui/ui/logger');
 
-ipcRenderer.on('log', (event, { message, emoji, category }) => {
-    const logBox = document.getElementById('logOutput');
-    const emojiPrefix = emoji ? `${emoji} ` : '';
-    const formatted = `${emojiPrefix}[${category}] ${message}\n`;
+logger.initLogger();
 
-    if (logBox) {
-        const line = document.createElement('div');
-        line.textContent = formatted;
-        logBox.appendChild(line);
-    }
-
-    console.log(formatted.trim());
-});
-
-// 🧠 Core State
-let botProcess = null;
-let obsSocket = null;
-let isOBSConnected = false;
-let viewerInterval = null;
-let testFlagsTimeout;
-
-// 🧩 DOM Elements
-const startBtn = document.getElementById('startBot');
-const stopBtn = document.getElementById('stopBot');
-const status = document.getElementById('status');
-const logBox = document.getElementById('logOutput');
-const viewerCount = document.getElementById('viewerCount');
-const streamStatus = document.getElementById('streamStatus');
-const manualCommandInput = document.getElementById('manualCommand');
-const sendCommandBtn = document.getElementById('sendCommand');
-const sourceToggleBtn = document.getElementById('toggleSource');
-const simulateTwitchCheckbox = document.getElementById('simulateTwitch');
-const simulateOBSCheckbox = document.getElementById('simulateOBS');
-const simulateDiscordCheckbox = document.getElementById('simulateDiscord');
-
-// 🧩 Module Toggles (Config-driven)
-const moduleEnabled = {
-    colorControl: config.modules?.colorControl !== false,
-    soundEffects: config.modules?.soundEffects !== false,
-    obsToggles: config.modules?.obsToggles !== false,
-    chatLinks: config.modules?.chatLinks !== false,
-    manualCommands: config.modules?.manualCommands !== false,
-    clipWatcher: config.modules?.clipWatcher !== false,
-    streamStats: config.modules?.streamStats !== false,
-    testingMode: config.modules?.testingMode !== false
+const state = {
+  botProcess: null,
+  config: null,
 };
 
-// =============================================
-//     renderer.js — Part 2: Bot + Test Flags
-// =============================================
+const UI = {
+  SELECTORS: {
+    ACTIVE_TAB: '.tab-active',
+  },
+  EVENTS: {
+    BOT_STATE_CHANGED: 'botStateChanged',
+    MODULES_CHANGED: 'modulesChanged',
+  },
+};
 
-function updateTestModeFlags() {
-    if (!botProcess || !botProcess.stdin.writable) return;
-    const Simulate = simulateTwitchCheckbox?.checked;
-    const simulate = simulateOBSCheckbox?.checked;
-    const simulateDiscord = document.getElementById('simulateDiscord')?.checked;
-    botProcess.stdin.write(`!testflags ${Simulate} ${simulate} ${simulateDiscord}\n`);
-}
+// ==============================================
+//              Renderer Functions
+// ==============================================
 
-function startBot() {
-    if (botProcess) {
-        status.textContent = 'Bot is already running!';
-        return;
+document.addEventListener('DOMContentLoaded', async () => {
+  log.ok('DOM fully loaded, starting GUI initialization...');
+
+  const urlParams = new URLSearchParams(window.location.search);
+  const isDockableWindow = urlParams.get('dockable') === 'true';
+
+  if (isDockableWindow) {
+    const titleBar = document.getElementById('titleBar');
+    if (titleBar) {
+      titleBar.style.display = 'none';
     }
 
-    status.textContent = 'Starting bot...';
-    logBox.textContent = '';
+    const tabsContainer = document.querySelector('.tabs');
+    if (tabsContainer) {
+      tabsContainer.style.marginTop = '0';
+    }
 
-    const botPath = path.join(__dirname, '..', 'bot.js');
-    const args = [botPath];
+    document.body.classList.add('dockable-window');
 
-    if (moduleEnabled.testingMode && config.testing?.simulateTwitch) args.push('--Simulate-twitch');
-    if (moduleEnabled.testingMode && config.testing?.simulateOBS) args.push('--simulate-obs');
-    if (moduleEnabled.testingMode && config.testing?.simulateDiscord) args.push('--simulate-discord');
+    document.title = 'VOiD OBS Dock';
+  }
 
-    botProcess = spawn('node', args);
+  // ==============================================
+  //                Window Controls
+  // ==============================================
 
-    const log = (msg, isError = false) => {
-        logBox.textContent += msg;
-        logBox.scrollTop = logBox.scrollHeight;
-    };
+  document.getElementById('minimizeBtn')?.addEventListener('click', () => {
+    window.require('electron').ipcRenderer.send('window-minimize');
+  });
 
-    botProcess.stdout.on('data', (data) => log(data.toString()));
-    botProcess.stderr.on('data', (data) => log(data.toString(), true));
+  document.getElementById('maximizeBtn')?.addEventListener('click', () => {
+    window.require('electron').ipcRenderer.send('window-maximize');
+  });
 
-    botProcess.on('close', (code) => {
-        log(`\n[BOT] Process exited with code ${code}\n`, true);
-        status.textContent = 'Bot stopped.';
-        botProcess = null;
-        startBtn.disabled = false;
-        stopBtn.disabled = true;
+  document.getElementById('closeBtn')?.addEventListener('click', () => {
+    window.require('electron').ipcRenderer.send('window-close');
+  });
+
+  document.getElementById('saveLogsBtn')?.addEventListener('click', () => {
+    const { exportLogs } = require('./ui/logger');
+    exportLogs();
+  });
+
+  document.getElementById('createDockableBtn')?.addEventListener('click', () => {
+    window.require('electron').ipcRenderer.send('create-dockable-window');
+  });
+
+  const voidTitle = document.querySelector('#titleBar .text-base-content');
+
+  if (voidTitle) {
+    voidTitle.style.cursor = 'pointer';
+    voidTitle.title = 'Right-click to open an OBS dockable window';
+
+    voidTitle.addEventListener('mousedown', (e) => {
+      if (e.button === 2) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
     });
 
-    status.textContent = 'Bot is running.';
-    setDashboardButtonsEnabled(true);
-    startBtn.disabled = true;
-    stopBtn.disabled = false;
+    voidTitle.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
 
-    if (moduleEnabled.obsToggles || moduleEnabled.streamStats) connectToOBS();
-    if (moduleEnabled.streamStats) startViewerPolling();
-    if (moduleEnabled.soundEffects) loadSoundButtons();
-    if (moduleEnabled.clipWatcher) startClipWatcher();
-}
+      window.require('electron').ipcRenderer.send('create-dockable-window');
+      window.showToast('Opening as dockable window', 'info');
+    });
+  }
 
-function stopBot() {
-    if (botProcess) {
-        status.textContent = 'Stopping bot...';
-        botProcess.kill();
-        setDashboardButtonsEnabled(false);
-    } else {
-        status.textContent = 'Bot is not running.';
-        setDashboardButtonsEnabled(false);
-    }
+  // ==============================================
+  //              Initialization Flow
+  // ==============================================
 
-    if (moduleEnabled.streamStats) stopViewerPolling();
-    if (moduleEnabled.obsToggles || moduleEnabled.streamStats) disconnectOBS();
-    if (moduleEnabled.clipWatcher) stopClipWatcher();
-}
+  try {
+    state.config = await initConfigManager();
 
-startBtn.addEventListener('click', startBot);
-stopBtn.addEventListener('click', stopBot);
+    initTabManager(state);
+    initBotControls(state);
+    initUIManager(state);
+    initDashboardManager(state);
 
-// =============================================
-//     renderer.js — Part 3: OBS + Stream Stats
-// =============================================
+    const needsSetup = await ipcRenderer.invoke('check-needs-setup');
 
-function connectToOBS() {
-    if (!moduleEnabled.obsToggles && !moduleEnabled.streamStats) return;
-    if (isOBSConnected) return;
+    if (needsSetup) {
+      log.ok('First run detected, launching setup wizard');
 
-    try {
-        obsSocket = new WebSocket(config.obs.websocketUrl);
+      const { showSetupWizard } = require('../utils/setupWizard');
 
-        obsSocket.onopen = () => {
-            isOBSConnected = true;
-            console.log('[ OBS OK       ] Connected to OBS WebSocket');
-        };
+      showSetupWizard(state.config, () => {
+        ipcRenderer.send('setup-wizard-completed');
 
-        obsSocket.onclose = () => {
-            isOBSConnected = false;
-            console.log('[ OBS WARN     ] Disconnected from OBS WebSocket');
-        };
-
-        obsSocket.onerror = err => {
-            console.error('[ OBS ERROR    ] WebSocket Error:', err.message);
-        };
-    } catch (e) {
-        console.error('[ OBS ERROR    ] Failed to connect:', e.message);
-    }
-}
-
-function disconnectOBS() {
-    if (obsSocket) {
-        obsSocket.close();
-        obsSocket = null;
-        isOBSConnected = false;
-    }
-}
-
-async function fetchViewerCount() {
-    if (!moduleEnabled.streamStats) return;
-
-    try {
-        const res = await fetch(`https://api.twitch.tv/helix/streams?user_login=${config.twitch.channel}`, {
-            headers: {
-                'Client-ID': config.twitch.clientId,
-                'Authorization': `Bearer ${config.twitch.bearerToken}`
-            }
-        });
-
-        const data = await res.json();
-        const stream = data.data?.[0];
-
-        if (stream) {
-            streamStatus.textContent = '🟢 Stream is LIVE';
-            viewerCount.textContent = `Viewers: ${stream.viewer_count}`;
-        } else {
-            streamStatus.textContent = '🔴 Stream is OFFLINE';
-            viewerCount.textContent = 'Viewers: 0';
+        if (typeof initDashboardManager === 'function') {
+          initDashboardManager(state);
         }
-    } catch (err) {
-        streamStatus.textContent = '⚠️ Failed to fetch';
-        viewerCount.textContent = 'Error';
-        console.error('[ TWITCH ERROR ] Viewer fetch error:', err.message);
-    }
-}
 
-function startViewerPolling() {
-    if (!moduleEnabled.streamStats) return;
-    fetchViewerCount();
-    viewerInterval = setInterval(fetchViewerCount, 30000);
-}
-
-function stopViewerPolling() {
-    clearInterval(viewerInterval);
-    viewerInterval = null;
-}
-
-sourceToggleBtn?.addEventListener('click', () => {
-    if (!moduleEnabled.obsToggles) return;
-    if (!isOBSConnected || !obsSocket || obsSocket.readyState !== WebSocket.OPEN) {
-        console.warn('[ OBS WARN     ] Not connected');
-        return;
-    }
-
-    const request = {
-        op: 6,
-        d: {
-            requestType: "ToggleSourceVisibility",
-            requestId: "toggle_" + Date.now(),
-            requestData: {
-                sceneName: config.obs.sceneName,
-                sourceName: config.obs.sourceName
-            }
+        const { setupConfigForm } = require('./ui/configManager');
+        if (typeof setupConfigForm === 'function') {
+          setupConfigForm(state.config);
         }
-    };
 
-    obsSocket.send(JSON.stringify(request));
+        window.showToast('Setup Complete! Refreshing the VOiD.', 'success');
+      });
+    }
+  } catch (error) {
+    log.error('Failed to initialize GUI:', error);
+    window.showToast('Failed to Initialize GUI', 'error');
+  }
 });
 
-// =============================================
-//  renderer.js — Part 4: Sounds + Commands + UI
-// =============================================
+// ==============================================
+//               Logs Tab Buttons
+// ==============================================
 
-// 🎵 Load Sound Buttons (if enabled)
-function loadSoundButtons() {
-    const container = document.getElementById('soundButtons');
-    if (!moduleEnabled.soundEffects || !container) return;
-
-    container.innerHTML = '';
-
-    const soundsDir = path.join(__dirname, '..', 'sounds');
-    if (!fs.existsSync(soundsDir)) {
-        console.warn('[ SOUND WARN   ] No sounds folder found');
-        container.innerHTML = '<p style="color: #888;">No sound effects folder found.</p>';
-        return;
-    }
-
-    const files = fs.readdirSync(soundsDir).filter(file => file.endsWith('.mp3'));
-    if (files.length === 0) {
-        container.innerHTML = '<p style="color: #888;">No MP3s found in the sounds folder.</p>';
-        return;
-    }
-
-    files.sort();
-    files.forEach(filename => {
-        const soundName = filename.replace('.mp3', '');
-        const button = document.createElement('button');
-        button.textContent = soundName;
-        button.className = 'btn btn-outline btn-sm';
-        button.addEventListener('click', () => {
-            sendCommand(`!${soundName}`);
-        });
-        container.appendChild(button);
-    });
-
-    if (botProcess === null) setDashboardButtonsEnabled(false);
-}
-
-// ✍️ Manual Command Input
-sendCommandBtn?.addEventListener('click', () => {
-    if (!moduleEnabled.manualCommands) return;
-    const command = manualCommandInput?.value?.trim();
-    if (!command || !botProcess) return;
-
-    botProcess.stdin.write(command + '\n');
-    manualCommandInput.value = '';
+document.getElementById('clearLogsBtn')?.addEventListener('click', () => {
+  const logBox = document.getElementById('logOutput');
+  if (logBox) logBox.textContent = '';
 });
 
-// 🧠 Send command helper
-function sendCommand(command) {
-    if (botProcess && botProcess.stdin.writable) {
-        botProcess.stdin.write(command + '\n');
-        console.log('[ GUI ACTION   ] Sent command:', command);
-    } else {
-        console.warn('[ GUI WARN     ] Bot is not running. Command ignored:', command);
-    }
-}
-window.sendCommand = sendCommand;
-
-// 🧪 OBS Toggle Shortcut (e.g., !catcam)
-const toggleObsButton = document.getElementById('toggleObs');
-if (toggleObsButton && moduleEnabled.obsToggles && config.obs.sourceName) {
-    toggleObsButton.textContent = `Toggle ${config.obs.sourceName}`;
-    toggleObsButton.addEventListener('click', () => {
-        sendCommand('!catcam');
-    });
-}
-
-// 🖱 Enable / Disable buttons
-function setDashboardButtonsEnabled(enabled) {
-    const buttons = document.querySelectorAll(
-        '#dashboardTab button:not(#startBot):not(#stopBot):not(#refreshSoundsBtn)'
-    );
-
-    buttons.forEach(btn => {
-        btn.style.opacity = enabled ? '1' : '0.5';
-        btn.style.pointerEvents = enabled ? 'auto' : 'none';
-        btn.style.cursor = enabled ? 'pointer' : 'default';
-    });
-
-    const manualInput = document.getElementById('manualCommand');
-    if (manualInput) {
-        manualInput.style.opacity = enabled ? '1' : '0.5';
-        manualInput.style.pointerEvents = enabled ? 'auto' : 'none';
-        manualInput.style.cursor = enabled ? 'text' : 'default';
-    }
-}
-
-// =============================================
-//  renderer.js — Part 5: Test Flags + Config UI
-// =============================================
-
-// 🐞 Debug Flag Checkboxes
-function renderDebugFlags() {
-    const container = document.getElementById('debugFlags');
-    container.innerHTML = '';
-
-    if (!config.debug) {
-        container.textContent = 'No debug settings found.';
-        return;
-    }
-
-    for (const key in config.debug) {
-        const checkbox = document.createElement('input');
-        checkbox.type = 'checkbox';
-        checkbox.checked = config.debug[key];
-        checkbox.onchange = () => {
-            config.debug[key] = checkbox.checked;
-        };
-
-        const label = document.createElement('label');
-        label.appendChild(checkbox);
-        label.appendChild(document.createTextNode(' ' + key));
-        label.style.display = 'block';
-        container.appendChild(label);
-    }
-}
-
-// 🧩 Config + Module Toggle Renderer
-function createSection(title, helpText = '', fields = [], moduleKey = null) {
-    const container = document.getElementById('configForm');
-
-    const section = document.createElement('div');
-    section.className = 'border border-base-300 p-4 rounded-lg space-y-2 bg-base-200';
-
-    const headerRow = document.createElement('div');
-    headerRow.className = 'flex items-center justify-between';
-
-    const titleEl = document.createElement('h3');
-    titleEl.className = 'text-lg font-bold text-accent';
-    titleEl.textContent = title;
-
-    headerRow.appendChild(titleEl);
-
-    section.appendChild(headerRow);
-
-    if (helpText) {
-        const help = document.createElement('p');
-        help.className = 'text-sm text-base-content/60';
-        help.textContent = helpText;
-        section.appendChild(help);
-    }
-
-    const fieldGroup = document.createElement('div');
-    fieldGroup.className = 'space-y-2';
-
-    // Module toggle (if applicable)
-    if (moduleKey) {
-        const toggleWrapper = document.createElement('label');
-        toggleWrapper.className = 'flex items-center gap-2';
-
-        const toggle = document.createElement('input');
-        toggle.type = 'checkbox';
-        toggle.className = 'toggle toggle-success';
-        toggle.checked = config.modules?.[moduleKey] !== false;
-
-        toggle.onchange = () => {
-            config.modules = config.modules || {};
-            config.modules[moduleKey] = toggle.checked;
-
-            // Enable/Disable fields in the Config UI
-            fieldGroup.querySelectorAll('input, textarea').forEach(el => {
-                el.disabled = !toggle.checked;
-            });
-            fieldGroup.classList.toggle('opacity-50', !toggle.checked);
-            fieldGroup.classList.toggle('pointer-events-none', !toggle.checked);
-
-            // Show/hide module section in Dashboard
-            const dashboardSection = document.querySelector(`[data-module="${moduleKey}"]`);
-            if (dashboardSection) {
-                dashboardSection.style.display = toggle.checked ? '' : 'none';
-            }
-
-            saveConfig();
-        };
-
-        toggleWrapper.appendChild(toggle);
-        toggleWrapper.appendChild(document.createTextNode('Enable'));
-        headerRow.appendChild(toggleWrapper);
-    }
-
-
-    fields.forEach(field => {
-        const wrapper = document.createElement('div');
-        wrapper.className = 'space-y-1';
-
-        const label = document.createElement('label');
-        label.className = 'block text-sm font-medium';
-        label.textContent = field.label;
-        wrapper.appendChild(label);
-
-        let input;
-        if (field.type === 'custom' && typeof field.render === 'function') {
-            const customEl = field.render();
-            wrapper.appendChild(customEl);
-            fieldGroup.appendChild(wrapper);
-            return;
-        }
-        if (field.type === 'textarea') {
-            input = document.createElement('textarea');
-            input.className = 'textarea textarea-bordered w-full';
-            input.rows = 4;
-            input.value = field.value;
-        } else if (field.type === 'checkbox') {
-            input = document.createElement('input');
-            input.type = 'checkbox';
-            input.className = 'checkbox checkbox-accent';
-            input.checked = field.value;
-        } else {
-            input = document.createElement('input');
-            input.type = 'text';
-            input.className = 'input input-bordered w-full';
-            input.value = field.value;
-        }
-
-        input.onchange = (e) => {
-            if (field.type === 'checkbox') {
-                field.onChange(e.target.checked);
-                saveConfig();
-            } else {
-                field.onChange(e.target.value);
-                debouncedSaveConfig();
-            }
-        };
-
-        wrapper.appendChild(input);
-        fieldGroup.appendChild(wrapper);
-    });
-
-    section.appendChild(fieldGroup);
-    container.appendChild(section);
-    return section;
-}
-
-function showToast(message, type = 'success') {
-    const toast = document.getElementById('toast');
-    const bgClass = type === 'error' ? 'alert-error' : 'alert-success';
-
-    const el = document.createElement('div');
-    el.className = `alert ${bgClass} shadow-lg`;
-    el.innerHTML = `<span>${message}</span>`;
-
-    toast.appendChild(el);
-
-    setTimeout(() => {
-        el.remove();
-    }, 3000); // Toast disappears after 3 seconds
-}
-
-// 💾 Save Config to config.js
-function debounce(fn, delay = 500) {
-    let timeout;
-    return (...args) => {
-        clearTimeout(timeout);
-        timeout = setTimeout(() => fn(...args), delay);
-    };
-}
-
-const debouncedSaveConfig = debounce(saveConfig, 500);
-
-function saveConfig() {
-    // Nicely formatted JSON with trailing semicolon, just like you had
-    const configString = 'module.exports = ' + JSON.stringify(config, null, 2) + ';\n';
-
-    fs.writeFile(configPath, configString, (err) => {
-        if (err) {
-            console.error(err);
-            showToast('❌ Failed to save config.js', 'error');
-        } else {
-            showToast('✅ Saved config.js successfully!', 'success');
-        }
-    });
-}
-
-function refreshDashboard() {
-    if (moduleEnabled.soundEffects) loadSoundButtons();
-    setDashboardButtonsEnabled(botProcess !== null);
-}
-
-function renderFullConfig() {
-    const container = document.getElementById('configForm');
-    container.innerHTML = '';
-
-    // 🟣 Always render Twitch Chat at the beginning
-    createSection('Twitch Chat', 'Allows the bot to send messages in Twitch Chat', [
-        { label: 'Bot Username:', value: config.twitch.username, onChange: v => (config.twitch.username = v) },
-        { label: 'Bot OAuth:', value: config.twitch.oauth, onChange: v => (config.twitch.oauth = v) },
-        { label: 'Bot ClientID:', value: config.twitch.clientId, onChange: v => (config.twitch.clientId = v) },
-        { label: 'Bot Bearer Token:', value: config.twitch.bearerToken, onChange: v => (config.twitch.bearerToken = v) },
-        { label: 'User Channel:', value: config.twitch.channel, onChange: v => (config.twitch.channel = v) },
-        { label: 'User Nickname:', value: config.twitch.streamerName, onChange: v => (config.twitch.streamerName = v) }
-    ]);
-
-    renderReorderUI(); // 🧩 Keep Module Order UI at top
-
-    const moduleRenderers = {
-        colorControl: () => createSection('Color Control', 'Allows Hue lights to be controlled from the Dashboard and via Twitch Chat', [
-            { label: 'Hue Bridge IP:', value: config.hue.bridgeIp, onChange: v => (config.hue.bridgeIp = v) },
-            { label: 'Hue API Key:', value: config.hue.apiKey, onChange: v => (config.hue.apiKey = v) },
-            {
-                label: 'Hue Bulb ID(s):',
-                value: config.hue.bulbIds.join(','),
-                onChange: v => (config.hue.bulbIds = v.split(',').map(id => parseInt(id.trim())).filter(n => !isNaN(n)))
-            }
-        ], 'colorControl'),
-
-        soundEffects: () => createSection('Sound Effects', 'Allows the bot to play sound effects via VLC Player from the Dashboard and Twitch Chat', [
-            {
-                label: 'Sound Effects Folder:',
-                type: 'custom',
-                render: () => {
-                    const wrapper = document.createElement('div');
-                    wrapper.className = 'flex items-center gap-2';
-
-                    const input = document.createElement('input');
-                    input.type = 'text';
-                    input.className = 'input input-bordered w-full';
-                    input.value = config.soundEffectsFolder;
-
-                    input.onchange = () => {
-                        config.soundEffectsFolder = input.value;
-                        debouncedSaveConfig();
-                    };
-
-                    const button = document.createElement('button');
-                    button.className = 'btn btn-square btn-error';
-                    button.innerHTML = '📁'; // or use an SVG later
-                    button.title = 'Choose Folder';
-
-                    button.onclick = async () => {
-                        const result = await ipcRenderer.invoke('clipbot:chooseFolder');
-                        if (result) {
-                            input.value = result;
-                            config.soundEffectsFolder = result;
-                            debouncedSaveConfig();
-                        }
-                    };
-
-                    wrapper.appendChild(input);
-                    wrapper.appendChild(button);
-                    return wrapper;
-                }
-            }
-        ], 'soundEffects'),
-
-        obsToggles: () => {
-            const fields = [
-                {
-                    label: 'OBS WebSocket URL:',
-                    value: config.obs.websocketUrl,
-                    onChange: v => (config.obs.websocketUrl = v)
-                }
-            ];
-
-            // We'll add a placeholder for the dynamic sources here
-            const section = createSection(
-                'OBS Source Toggles',
-                'Each source will have its own toggle button on the dashboard and Twitch command (!name)',
-                fields,
-                'obsToggles'
-            );
-
-            // Inject dynamic source editor
-            const fieldGroup = section.querySelector('.space-y-2:last-of-type');
-            const sourceList = document.createElement('div');
-            sourceList.id = 'obsSourceList';
-            sourceList.className = 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4';
-
-            const sectionHeader = document.createElement('div');
-            sectionHeader.className = 'pt-4 mt-4 border-t border-base-300';
-
-            const heading = document.createElement('h4');
-            heading.className = 'text-md font-semibold text-base-content mb-2';
-            heading.textContent = '🎬 OBS Sources';
-
-            sectionHeader.appendChild(heading);
-            fieldGroup.appendChild(sectionHeader);
-
-
-            config.obs.toggleSources.forEach((source, index) => {
-                const wrapper = document.createElement('div');
-                wrapper.className = 'border border-base-300 px-6 pt-6 pb-6 rounded-md bg-base-100';
-
-                ['name', 'sceneName', 'sourceName', 'duration', 'label'].forEach(key => {
-                    const fieldWrapper = document.createElement('div');
-                    fieldWrapper.className = 'mb-4';
-                    if (key === 'name') fieldWrapper.className += ' mt-4';
-
-                    const label = document.createElement('label');
-                    label.className = 'block text-sm font-medium mt-2 mb-2';
-                    const labels = {
-                        name: 'Chat Command (!command)',
-                        sceneName: 'Scene Name',
-                        sourceName: 'Source Name',
-                        duration: 'Toggle Duration (seconds)',
-                        label: 'Dashboard Label'
-                    };
-                    label.textContent = labels[key] || key;
-
-                    const input = document.createElement('input');
-                    input.type = key === 'duration' ? 'number' : 'text';
-                    input.className = 'input input-bordered w-full';
-
-                    if (key === 'duration') {
-                        input.value = source[key] / 1000; // Convert ms → seconds
-                        input.step = '1';
-                        input.min = '1';
-                    } else {
-                        input.value = source[key];
-                    }
-
-                    input.onchange = () => {
-                        config.obs.toggleSources[index][key] =
-                            key === 'duration' ? parseInt(input.value) * 1000 : input.value;
-                        debouncedSaveConfig();
-                    };
-
-                    if (key === 'name') {
-                        const inputGroup = document.createElement('div');
-                        inputGroup.className = 'flex items-center gap-2';
-
-                        const prefix = document.createElement('span');
-                        prefix.textContent = '!';
-                        prefix.className = 'text-lg font-bold';
-
-                        inputGroup.appendChild(prefix);
-                        inputGroup.appendChild(input);
-                        fieldWrapper.appendChild(label);
-                        fieldWrapper.appendChild(inputGroup);
-                    } else {
-                        fieldWrapper.appendChild(label);
-                        fieldWrapper.appendChild(input);
-                    }
-
-                    wrapper.appendChild(fieldWrapper);
-                });
-
-                const removeBtn = document.createElement('button');
-                removeBtn.textContent = 'Remove Source';
-                removeBtn.className = 'btn btn-sm btn-error mt-2';
-                removeBtn.onclick = () => {
-                    config.obs.toggleSources.splice(index, 1);
-                    saveConfig();
-                    renderFullConfig(); // Re-render after removing
-                };
-                wrapper.appendChild(removeBtn);
-
-                sourceList.appendChild(wrapper);
-            });
-
-            // ➕ Add Source Button
-            const addBtn = document.createElement('button');
-            addBtn.textContent = '➕ Add New OBS Source';
-            addBtn.className = 'btn btn-outline btn-info w-full mt-2';
-            addBtn.onclick = () => {
-                config.obs.toggleSources.push({
-                    name: '',
-                    sceneName: '',
-                    sourceName: '',
-                    duration: 10000,
-                    label: ''
-                });
-                saveConfig();
-                renderFullConfig(); // Re-render after adding
-            };
-
-            fieldGroup.appendChild(sourceList);
-            fieldGroup.appendChild(addBtn);
-
-            return section;
-        },
-
-        chatLinks: () => createSection('Chat Links', 'Allows the bot to respond to some common commands in Twitch Chat', [
-            { label: 'Command List URL (!commands):', value: config.links.commandsUrl, onChange: v => (config.links.commandsUrl = v) },
-            { label: 'Public Discord Invite Link (!discord):', value: config.links.discordInvite, onChange: v => (config.links.discordInvite = v) },
-            {
-                label: 'Social Media Link(s) (!socials):',
-                value: config.links.socialLinks.join('\n'),
-                onChange: v => {
-                    config.links.socialLinks = v.split('\n').map(s => s.trim()).filter(Boolean);
-                },
-                type: 'textarea'
-            }
-        ], 'chatLinks'),
-
-        manualCommands: () => createSection('Manual Commands', 'Allows manual commands to be sent from the Dashboard', [], 'manualCommands'),
-
-        clipWatcher: () => createSection('Clip Watcher', 'Auto-posts saved clips to Discord', [
-            {
-                label: 'Clips Folder:',
-                type: 'custom',
-                render: () => {
-                    const wrapper = document.createElement('div');
-                    wrapper.className = 'flex items-center gap-2';
-
-                    const input = document.createElement('input');
-                    input.type = 'text';
-                    input.className = 'input input-bordered w-full';
-                    input.value = config.clipFolder;
-
-                    input.onchange = () => {
-                        config.clipFolder = input.value;
-                        debouncedSaveConfig();
-                    };
-
-                    const button = document.createElement('button');
-                    button.className = 'btn btn-square btn-error hover:brightness-110 transition-all';
-                    button.innerHTML = '📁';
-                    button.title = 'Choose Folder';
-
-                    button.onclick = async () => {
-                        const result = await ipcRenderer.invoke('clipbot:chooseFolder');
-                        if (result) {
-                            input.value = result;
-                            config.clipFolder = result;
-                            debouncedSaveConfig();
-                        }
-                    };
-
-                    wrapper.appendChild(input);
-                    wrapper.appendChild(button);
-                    return wrapper;
-                }
-            },
-            { label: 'Discord Webhook URL:', value: config.discordWebhookUrl, onChange: v => (config.discordWebhookUrl = v) },
-            { label: 'Maximum File Size (Mb):', value: config.maxFileSizeMb, onChange: v => (config.maxFileSizeMb = Number(v)) },
-            {
-                label: 'Game List:',
-                type: 'custom',
-                render: () => {
-                    const wrapper = document.createElement('div');
-                    wrapper.className = 'space-y-3';
-
-                    // Input Row
-                    const inputRow = document.createElement('div');
-                    inputRow.className = 'flex flex-wrap gap-2 items-end';
-
-                    const procInput = document.createElement('input');
-                    procInput.type = 'text';
-                    procInput.placeholder = 'e.g. overwatch.exe';
-                    procInput.className = 'input input-bordered flex-1 min-w-[150px]';
-
-                    const nameInput = document.createElement('input');
-                    nameInput.type = 'text';
-                    nameInput.placeholder = 'e.g. Overwatch 2';
-                    nameInput.className = 'input input-bordered flex-1 min-w-[150px]';
-
-                    const addButton = document.createElement('button');
-                    addButton.textContent = '➕ Add Game';
-                    addButton.className = 'btn btn-accent';
-                    addButton.onclick = () => {
-                        const proc = procInput.value.trim().toLowerCase();
-                        const name = nameInput.value.trim();
-                        if (proc && name) {
-                            config.knownGames[proc] = name;
-                            procInput.value = '';
-                            nameInput.value = '';
-                            saveConfig();
-                            renderGameList(); // Refresh list
-                        }
-                    };
-
-                    inputRow.appendChild(procInput);
-                    inputRow.appendChild(nameInput);
-                    inputRow.appendChild(addButton);
-                    wrapper.appendChild(inputRow);
-
-                    // Game List Display
-                    const gameList = document.createElement('div');
-                    gameList.id = 'knownGameList';
-                    gameList.className = 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3';
-                    wrapper.appendChild(gameList);
-
-                    function renderGameList() {
-                        gameList.innerHTML = '';
-                        for (const [proc, name] of Object.entries(config.knownGames)) {
-                            const card = document.createElement('div');
-                            card.className = 'border border-base-300 p-4 rounded-md bg-base-100 flex items-center justify-between gap-4';
-
-                            const label = document.createElement('div');
-                            label.innerHTML = `<span class="font-mono text-sm">${proc}</span> → <span>${name}</span>`;
-
-                            const removeBtn = document.createElement('button');
-                            removeBtn.textContent = '❌';
-                            removeBtn.className = 'btn btn-sm btn-neutral';
-                            removeBtn.onclick = () => {
-                                delete config.knownGames[proc];
-                                saveConfig();
-                                renderGameList();
-                            };
-
-                            card.appendChild(label);
-                            card.appendChild(removeBtn);
-                            gameList.appendChild(card);
-                        }
-                    }
-
-                    renderGameList();
-                    return wrapper;
-                }
-            },
-            {
-                label: 'Delete Original Clip After Posting:',
-                value: config.deleteOriginalAfterPost,
-                onChange: v => (config.deleteOriginalAfterPost = v),
-                type: 'checkbox'
-            },
-            {
-                label: 'Delete Compressed Clip After Posting:',
-                value: config.deleteCompressedAfterPost,
-                onChange: v => (config.deleteCompressedAfterPost = v),
-                type: 'checkbox'
-            }
-        ], 'clipWatcher'),
-
-        streamStats: () => createSection('Stream Stats', 'Displays live stream stats on the dashboard', [], 'streamStats'),
-
-        testingMode: () => createSection('Testing Mode', 'Enables simulated Twitch, OBS, and Discord connections', [], 'testingMode')
-    };
-
-    // Render sections in the order defined in config.modulesOrder
-    (config.modulesOrder || []).forEach(modKey => {
-        if (moduleRenderers[modKey]) {
-            moduleRenderers[modKey]();
-        }
-    });
-
-}
-
-
-// 🧭 Tab Switching
-function switchTab(tabName) {
-    document.querySelectorAll('.tabContent').forEach(tab => tab.classList.add('hidden'));
-    document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('tab-active'));
-
-    document.getElementById(`${tabName}Tab`)?.classList.remove('hidden');
-    document.querySelector(`.tab[onclick="switchTab('${tabName}')"]`)?.classList.add('tab-active');
-
-    if (tabName === 'dashboard') {
-        refreshDashboard();
-    } else if (tabName === 'config') {
-        renderFullConfig();
-    }
-}
-
-window.switchTab = switchTab;
-
-// ✅ Run default tab on DOM load
-document.addEventListener('DOMContentLoaded', () => {
-    setTimeout(() => {
-        // 🧼 Dashboard modules will only render if DOM is fully loaded
-        renderDashboardModules();
-        initializeTestingModeModule();
-        renderObsSourceButtons();
-        refreshDashboard(); // also handles buttons
-
-        // 🚀 Load default tab
-        switchTab('dashboard');
-
-        // 💾 Attach save button listeners
-        document.getElementById('saveDebugConfig')?.addEventListener('click', saveConfig);
-        document.getElementById('saveFullConfig')?.addEventListener('click', saveConfig);
-    }, 0);
+// ==============================================
+//              Info Button Handler
+// ==============================================
+
+document.getElementById('infoButton')?.addEventListener('click', () => {
+  const { showMarkdownModal } = require('../utils/tooltipManager');
+  const voidInfo = require('../utils/voidInfo');
+  showMarkdownModal(voidInfo.title, voidInfo.content);
 });
 
-// 🧠 Manual command sender
-function sendCommand(command) {
-    if (botProcess && botProcess.stdin.writable) {
-        botProcess.stdin.write(command + '\n');
-        console.log('[ GUI ACTION   ] Sent command:', command);
-    } else {
-        console.warn('[ GUI WARN     ] Bot is not running. Command ignored:', command);
-    }
-}
-window.sendCommand = sendCommand;
+// ==============================================
+//              Window HTML Access
+// ==============================================
 
-// 🐣 Auto-init state on load
-setDashboardButtonsEnabled(false);
-if (config.obs?.sourceName) {
-    const toggleOBSButton = document.getElementById('toggleObs');
-    if (toggleOBSButton) toggleOBSButton.textContent = `Toggle ${config.obs.sourceName}`;
-}
-
-// Hiding Disabled Modules in the dashboard
-function hideDisabledModules() {
-    for (const mod in moduleEnabled) {
-        if (moduleEnabled[mod] === false) {
-            const el = document.querySelector(`[data-module="${mod}"]`);
-            if (el) el.style.display = 'none';
-            console.log(`[ MODULE HIDE  ] Disabled module hidden: ${mod}`);
-        }
-    }
-}
-
-// Reordering Modules
-function reorderModules() {
-    const grid = document.getElementById('dashboardGrid');
-    if (!grid || !Array.isArray(config.modulesOrder)) return;
-
-    config.modulesOrder.forEach(moduleKey => {
-        const el = document.querySelector(`[data-module="${moduleKey}"]`);
-        if (el) grid.appendChild(el); // Moves to the end in the desired order
-    });
-}
-
-setDashboardButtonsEnabled(false);
-hideDisabledModules();
-reorderModules();
-
-// =============================================
-//    renderer.js — Part 7: Dynamic Dashboard Renderer
-// =============================================
-
-function renderDashboardModules() {
-    const grid = document.getElementById('dashboardGrid');
-    if (!grid || !Array.isArray(config.modulesOrder)) return;
-
-    // Clear everything first
-    grid.innerHTML = '';
-
-    // Template creators for each module
-    const templates = {
-        testingMode: () => {
-            const html = `
-				<div data-module="testingMode" class="card bg-base-300 shadow-lg p-4 space-y-4 w-full max-w-full overflow-hidden">
-					<h3 class="text-xl font-bold text-accent">🧪 Testing Mode</h3>
-					<div class="form-control">
-						<label class="label flex flex-wrap items-center justify-between gap-2">
-							<span class="label-text">Simulate connection to Twitch</span>
-							<input type="checkbox" id="simulateTwitch" class="toggle toggle-warning" />
-						</label>
-					</div>
-					<div class="form-control">
-						<label class="label flex flex-wrap items-center justify-between gap-2">
-							<span class="label-text">Simulate connection to OBS WebSocket</span>
-							<input type="checkbox" id="simulateOBS" class="toggle toggle-info" />
-						</label>
-					</div>
-					<div class="form-control">
-						<label class="label flex flex-wrap items-center justify-between gap-2">
-							<span class="label-text">Simulate connection to Discord</span>
-							<input type="checkbox" id="simulateDiscord" class="toggle toggle-error" />
-						</label>
-					</div>
-				</div>`;
-            grid.insertAdjacentHTML('beforeend', html);
-            initializeTestingModeModule();
-        },
-
-        streamStats: () => {
-            const html = `
-				<div data-module="streamStats" class="card bg-base-300 shadow-lg p-4 space-y-4 w-full max-w-full overflow-hidden">
-					<h3 class="text-xl font-bold text-accent">📡 Stream Info</h3>
-					<div class="flex flex-wrap gap-4">
-						<div class="stat w-full sm:w-auto">
-							<div class="stat-title">Stream</div>
-							<div class="stat-value text-error" id="streamStatus" style="word-break: break-word; max-width: 100%; white-space: normal;">Offline</div>
-						</div>
-						<div class="stat w-full sm:w-auto">
-							<div class="stat-title">Viewers</div>
-							<div class="stat-value" id="viewerCount" style="word-break: break-word; max-width: 100%; white-space: normal;">0</div>
-						</div>
-					</div>
-				</div>`;
-            grid.insertAdjacentHTML('beforeend', html);
-        },
-
-        colorControl: () => {
-            const colors = [
-                { cmd: 'red', bg: 'bg-red-600', text: 'text-white' },
-                { cmd: 'green', bg: 'bg-green-600', text: 'text-white' },
-                { cmd: 'blue', bg: 'bg-blue-600', text: 'text-white' },
-                { cmd: 'yellow', bg: 'bg-yellow-400', text: 'text-black' },
-                { cmd: 'purple', bg: 'bg-purple-600', text: 'text-white' },
-                { cmd: 'cyan', bg: 'bg-cyan-500', text: 'text-black' },
-                { cmd: 'magenta', bg: 'bg-pink-500', text: 'text-white' },
-                { cmd: 'orange', bg: 'bg-orange-500', text: 'text-white' },
-                { cmd: 'white', bg: 'bg-white', text: 'text-black border border-gray-300' },
-                { cmd: 'black', bg: 'bg-black', text: 'text-white' },
-                { cmd: 'randomcolor', bg: 'bg-gradient-to-r from-pink-500 via-purple-500 to-blue-500', text: 'text-white' }
-            ];
-
-            const buttons = colors.map(c => {
-                return `<button class="btn btn-sm ${c.bg} ${c.text} hover:brightness-110" onclick="window.sendCommand('!${c.cmd}')">${c.cmd.charAt(0).toUpperCase() + c.cmd.slice(1)}</button>`;
-            }).join('');
-
-            const html = `
-				<div data-module="colorControl" class="card bg-base-300 shadow-lg p-4 space-y-4 w-full max-w-full overflow-hidden">
-					<h3 class="text-xl font-bold mb-2">💡 Color Control</h3>
-					<div class="flex flex-wrap gap-2">${buttons}</div>
-				</div>`;
-            grid.insertAdjacentHTML('beforeend', html);
-        },
-
-        soundEffects: () => {
-            const html = `
-				<div data-module="soundEffects" class="card bg-base-300 shadow-lg p-4 space-y-4 w-full max-w-full overflow-hidden">
-					<div class="flex flex-wrap gap-2" id="soundButtons"></div>
-					<button class="btn btn-outline btn-info mt-2" id="refreshSoundsBtn">🔄 Refresh Sound Effects</button>
-				</div>`;
-            grid.insertAdjacentHTML('beforeend', html);
-            document.getElementById('refreshSoundsBtn')?.addEventListener('click', window.loadSoundButtons);
-            if (moduleEnabled.soundEffects) loadSoundButtons();
-        },
-
-        obsToggles: () => {
-            const html = `
-				<div data-module="obsToggles" class="card bg-base-300 shadow-lg p-4 space-y-4 w-full max-w-full overflow-hidden">
-					<h3 class="text-xl font-bold mb-2">🎥 OBS Source Toggles</h3>
-					<div id="obsSourceButtons" class="grid grid-cols-2 gap-2"></div>
-				</div>`;
-            grid.insertAdjacentHTML('beforeend', html);
-            renderObsSourceButtons();
-        },
-
-        chatLinks: () => {
-            const html = `
-				<div data-module="chatLinks" class="card bg-base-300 shadow-lg p-4 space-y-4 w-full max-w-full overflow-hidden">
-					<h3 class="text-xl font-bold text-accent">🔗 Chat Links</h3>
-					<div class="flex flex-wrap gap-2">
-						<button class="btn btn-sm btn-outline" onclick="window.sendCommand('!commands')">!commands</button>
-						<button class="btn btn-sm btn-outline" onclick="window.sendCommand('!discord')">!discord</button>
-						<button class="btn btn-sm btn-outline" onclick="window.sendCommand('!socials')">!socials</button>
-					</div>
-				</div>`;
-            grid.insertAdjacentHTML('beforeend', html);
-        },
-
-        manualCommands: () => {
-            const html = `
-				<div data-module="manualCommands" class="card bg-base-300 shadow-lg p-4 space-y-4 w-full max-w-full overflow-hidden">
-					<h3 class="text-xl font-bold mb-2">⌨️ Manual Command Entry</h3>
-					<div class="flex gap-2">
-						<input type="text" id="manualCommand" placeholder="Type a command like !uptime or !color 12345"
-							class="input input-bordered w-full max-w-md" />
-						<button id="sendCommand" class="btn btn-secondary">Send</button>
-					</div>
-				</div>`;
-            grid.insertAdjacentHTML('beforeend', html);
-            document.getElementById('sendCommand')?.addEventListener('click', () => {
-                const input = document.getElementById('manualCommand');
-                if (input && input.value.trim()) sendCommand(input.value.trim());
-                input.value = '';
-            });
-        },
-
-        clipWatcher: () => {
-            const html = `
-				<div data-module="clipWatcher" class="card bg-base-300 shadow-lg p-4 space-y-4 w-full max-w-full overflow-hidden">
-					<h3 class="text-xl font-bold text-accent mb-2">📎 Clip Watcher</h3>
-					<p class="text-sm text-neutral-content">📡 Watching folder: <span id="clipFolderDisplay">(not set)</span></p>
-					<button id="restartClipWatcherBtn" class="btn btn-outline btn-sm w-full mt-2">Restart Clip Watcher</button>
-				</div>`;
-            grid.insertAdjacentHTML('beforeend', html);
-            document.getElementById('restartClipWatcherBtn')?.addEventListener('click', () => {
-                sendCommand('!restartclipwatcher');
-            });
-            if (config.clipFolder) {
-                document.getElementById('clipFolderDisplay').textContent = config.clipFolder;
-            }
-        }
-    };
-
-    // Render modules based on config.modulesOrder
-    config.modulesOrder.forEach(moduleKey => {
-        if (config.modules?.[moduleKey] === false) return;
-        if (templates[moduleKey]) templates[moduleKey]();
-    });
-
-    if (config.modules?.testingMode !== false) {
-        initializeTestingModeModule();
-    }
-}
-
-function initializeTestingModeModule() {
-    const SimulateCheckbox = document.getElementById('simulateTwitch');
-    const simulateOBSCheckbox = document.getElementById('simulateOBS');
-    const simulateDiscordCheckbox = document.getElementById('simulateDiscord');
-    const updateBtn = document.getElementById('updateTestFlagsBtn');
-
-    // 🛡️ Make sure testing block exists
-    if (!config.testing) {
-        config.testing = {
-            simulateTwitch: false,
-            simulateOBS: false,
-            simulateDiscord: false
-        };
+window.sendCommand = (command) => {
+  try {
+    if (!state.botProcess?.stdin.writable) {
+      log.warn('The Bot is not running. Command ignored:', command);
+      return false;
     }
 
-    // 🧠 Set checkbox states based on config
-    if (SimulateCheckbox) SimulateCheckbox.checked = config.testing.simulateTwitch || false;
-    if (simulateOBSCheckbox) simulateOBSCheckbox.checked = config.testing.simulateOBS || false;
-    if (simulateDiscordCheckbox) simulateDiscordCheckbox.checked = config.testing.simulateDiscord || false;
+    state.botProcess.stdin.write(command + '\n');
+    log.ok('Sent command:', command);
+    return true;
+  } catch (error) {
+    log.error('Failed to send command:', error);
+    return false;
+  }
+};
 
-    // 💾 Save to config on change
-    if (SimulateCheckbox) {
-        SimulateCheckbox.onchange = () => {
-            config.testing.simulateTwitch = SimulateCheckbox.checked;
-            saveConfig();
-        };
-    }
-    if (simulateOBSCheckbox) {
-        simulateOBSCheckbox.onchange = () => {
-            config.testing.simulateOBS = simulateOBSCheckbox.checked;
-            saveConfig();
-        };
-    }
-    if (simulateDiscordCheckbox) {
-        simulateDiscordCheckbox.onchange = () => {
-            config.testing.simulateDiscord = simulateDiscordCheckbox.checked;
-            saveConfig();
-        };
-    }
+// ==============================================
+//              Overlay Controls
+// ==============================================
 
-    // 🛰️ Update bot with new test flags
-    if (updateBtn) {
-        updateBtn.onclick = () => {
-            if (botProcess && botProcess.stdin.writable) {
-                const Simulate = SimulateCheckbox.checked;
-                const simulateOBS = simulateOBSCheckbox.checked;
-                const simulateDiscord = simulateDiscordCheckbox.checked;
+window.toggleChatOverlay = () => {
+  ipcRenderer.send('toggle-chat-overlay');
+};
 
-                botProcess.stdin.write(`!testflags ${Simulate} ${simulateOBS} ${simulateDiscord}\n`);
-                console.log(`[ GUI ACTION   ] Updated test flags: ${Simulate}, ${simulateOBS}, ${simulateDiscord}`);
-            }
-        };
-    }
-}
+window.toggleChatTransparency = () => {
+  ipcRenderer.send('toggle-overlay-clickthrough');
+};
 
-const folderSpan = document.getElementById('clipFolderDisplay');
-if (folderSpan && config.clipFolder) {
-    folderSpan.textContent = config.clipFolder;
-}
+window.electronAPI = {
+  ...window.electronAPI,
+  saveLogToFile: (options) => ipcRenderer.invoke('save-log-file', options),
+};
 
-const restartBtn = document.getElementById('restartClipWatcherBtn');
-if (restartBtn) {
-    restartBtn.addEventListener('click', () => {
-        window.sendCommand('!restartclipwatcher');
-    });
-}
+// ==============================================
+//                Event Listeners
+// ==============================================
 
-// Call it on DOM load and dashboard tab switch
-if (document.readyState === 'complete' || document.readyState === 'interactive') {
-    setTimeout(() => {
-        renderDashboardModules();
-        renderReorderUI();
-    }, 0);
-} else {
-    document.addEventListener('DOMContentLoaded', () => {
-        setTimeout(() => {
-            renderDashboardModules();
-            initializeTestingModeModule();
-            renderReorderUI();
-        }, 0);
-    });
-}
+window.addEventListener('modulesChanged', () => {
+  const currentTab = document.querySelector(UI.SELECTORS.ACTIVE_TAB)?.dataset?.tab;
 
-function renderObsSourceButtons() {
-    console.log('🔥 Rendering OBS source buttons...');
-    console.log('toggleSources:', config.obs?.toggleSources);
-    const container = document.getElementById('obsSourceButtons');
-    if (!container || !config.obs?.toggleSources) return;
-
-    container.innerHTML = '';
-    container.className = 'flex flex-wrap gap-2 items-start';
-
-    config.obs.toggleSources.forEach(source => {
-        const label = source.label || source.name;
-        const button = document.createElement('button');
-        button.className = 'btn btn-outline btn-sm';
-        button.innerText = label;
-
-        button.onclick = () => {
-            if (botProcess && botProcess.stdin.writable) {
-                botProcess.stdin.write(`!${source.name.toLowerCase()}\n`);
-                console.log(`[ GUI ACTION   ] Sent !${source.name.toLowerCase()} to bot`);
-            } else {
-                console.warn(`[ GUI WARN     ] Bot not running. Skipped !${source.name.toLowerCase()}`);
-            }
-        };
-
-        // 🧠 Apply initial disabled styles if bot isn't running
-        const isEnabled = botProcess !== null && botProcess.stdin.writable;
-        button.style.opacity = isEnabled ? '1' : '0.5';
-        button.style.pointerEvents = isEnabled ? 'auto' : 'none';
-        button.style.cursor = isEnabled ? 'pointer' : 'default';
-
-        container.appendChild(button);
-    });
-}
-
-// Replace old hideDisabledModules with renderDashboardModules
-function refreshDashboard() {
-    if (moduleEnabled.soundEffects) loadSoundButtons();
-    setDashboardButtonsEnabled(botProcess !== null);
-    renderDashboardModules();
-    renderObsSourceButtons();
-}
-
-// =============================================
-//    renderer.js — Part 8: Config Module Reorder UI
-// =============================================
-
-function renderReorderUI() {
-    const container = document.getElementById('configForm');
-    if (!container) return;
-
-    const section = document.createElement('div');
-    section.className = 'border border-base-300 p-4 rounded-lg space-y-4 bg-base-200';
-
-    const title = document.createElement('h3');
-    title.className = 'text-lg font-bold text-accent';
-    title.textContent = '🧩 Module Order';
-    section.appendChild(title);
-
-    const help = document.createElement('p');
-    help.className = 'text-sm text-base-content/60';
-    help.textContent = 'Drag and drop modules to reorder them on the Dashboard';
-    section.appendChild(help);
-
-    const list = document.createElement('ul');
-    list.id = 'moduleReorderList';
-    list.className = 'space-y-2';
-
-    (config.modulesOrder || []).forEach(mod => {
-        const li = document.createElement('li');
-        li.className = 'p-2 rounded-md bg-base-100 shadow cursor-move';
-        li.draggable = true;
-        li.dataset.moduleKey = mod;
-        const displayNames = {
-            colorControl: '💡 Color Control',
-            soundEffects: '🔊 Sound Effects',
-            obsToggles: '🎥 OBS Toggles',
-            obsSourceToggles: '🎛️ OBS Source Toggles',
-            chatLinks: '🔗 Chat Links',
-            manualCommands: '⌨️ Manual Commands',
-            clipWatcher: '📎 Clip Watcher',
-            streamStats: '📡 Stream Stats',
-            testingMode: '🧪 Testing Mode'
-        };
-
-        li.textContent = displayNames[mod] || mod;
-        list.appendChild(li);
-    });
-
-    section.appendChild(list);
-    container.appendChild(section);
-
-    addDragDropHandlers(list);
-}
-
-function addDragDropHandlers(list) {
-    let dragged;
-
-    list.querySelectorAll('li').forEach(item => {
-        item.addEventListener('dragstart', e => {
-            dragged = e.target;
-            e.dataTransfer.effectAllowed = 'move';
-            e.dataTransfer.setData('text/html', e.target.innerHTML);
-        });
-
-        item.addEventListener('dragover', e => {
-            e.preventDefault();
-            e.dataTransfer.dropEffect = 'move';
-        });
-
-        item.addEventListener('drop', e => {
-            e.preventDefault();
-            if (dragged !== e.target) {
-                const parent = dragged.parentNode;
-                const items = Array.from(parent.children);
-                const draggedIndex = items.indexOf(dragged);
-                const targetIndex = items.indexOf(e.target);
-                if (draggedIndex < targetIndex) {
-                    parent.insertBefore(dragged, e.target.nextSibling);
-                } else {
-                    parent.insertBefore(dragged, e.target);
-                }
-                config.modulesOrder = Array.from(parent.children).map(li => li.dataset.moduleKey);
-                saveConfig();
-                renderDashboardModules();
-            }
-        });
-    });
-}
-document.getElementById('toggleDebugPopup')?.addEventListener('click', () => {
-    const popup = document.getElementById('debugPopup');
-    if (!popup) return;
-    popup.classList.toggle('hidden');
-    renderDebugFlags(); // Refresh checkboxes every time it's opened
+  if (currentTab === 'dashboard') {
+    log.ok('Modules changed – re-rendering dashboard');
+    renderDashboard(state.config);
+  }
 });
 
-document.getElementById('saveDebugConfig')?.addEventListener('click', saveConfig);
+// ==============================================
+//             OAuth Config Refresh
+// ==============================================
+
+ipcRenderer.on('configUpdatedFromOAuth', async () => {
+  try {
+    const freshConfig = await ipcRenderer.invoke('getFreshConfig');
+    state.config = freshConfig;
+
+    const { setupConfigForm } = require('./ui/configManager');
+    setupConfigForm(freshConfig);
+
+    window.showToast('🔐 Twitch OAuth Updated', 'success');
+    log.ok('Config tab rebuilt with fresh Twitch tokens');
+  } catch (err) {
+    log.error('Failed to refresh Twitch config:', err);
+    window.showToast('❌ Failed to Update OAuth', 'error');
+  }
+});

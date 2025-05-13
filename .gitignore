@@ -33,3 +33,10 @@ Thumbs.db
 # IDEs
 .vscode/
 .idea/
+
+# Linter and formatter configs
+.eslintrc.js
+.eslintignore
+.prettierrc
+.prettierignore
+VOiD.code-workspace

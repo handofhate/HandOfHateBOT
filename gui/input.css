@@ -1,0 +1,685 @@
+/* =========================================== */
+/*                   input.css                 */
+/* =========================================== */
+
+/* =========================================== */
+/*                 Tailwind Setup              */
+/* =========================================== */
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* =========================================== */
+/*        Sortable Drag and Drop Styles        */
+/* =========================================== */
+
+.drag-handle {
+  color: #666;
+  cursor: move;
+  user-select: none;
+}
+
+.sortable-ghost {
+  opacity: 0.5;
+}
+
+.sortable-drag {
+  background: #374151;
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+}
+
+/* =========================================== */
+/*              Drag Target Styles             */
+/* =========================================== */
+
+[data-module].drag-over {
+  border: 2px dashed var(--color-accent);
+}
+
+/* =========================================== */
+/*             Scrollbar for Tabs              */
+/* =========================================== */
+
+.tabContent {
+  overflow-y: auto;
+  height: 100%;
+  min-height: 0;
+  flex: 1 1 0%;
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-base-300, #333) transparent;
+}
+
+.tabContent::-webkit-scrollbar {
+  width: 8px;
+  background: transparent;
+}
+
+.tabContent::-webkit-scrollbar-thumb {
+  background: var(--color-base-300, #333);
+  border-radius: 8px;
+}
+
+.tabContent::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* =========================================== */
+/*         Consistent Scrollbar Styling        */
+/* =========================================== */
+
+.overflow-y-auto:not(#logOutput),
+.overflow-auto:not(#logOutput),
+.tabContent:not(#logsTab) {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-base-300) transparent;
+}
+
+.overflow-y-auto:not(#logOutput)::-webkit-scrollbar,
+.overflow-auto:not(#logOutput)::-webkit-scrollbar,
+.tabContent:not(#logsTab)::-webkit-scrollbar {
+  width: 8px;
+  background: transparent;
+}
+
+.overflow-y-auto:not(#logOutput)::-webkit-scrollbar-thumb,
+.overflow-auto:not(#logOutput)::-webkit-scrollbar-thumb,
+.tabContent:not(#logsTab)::-webkit-scrollbar-thumb {
+  background: var(--color-base-300);
+  border-radius: 8px;
+}
+
+.overflow-y-auto:not(#logOutput)::-webkit-scrollbar-track,
+.overflow-auto:not(#logOutput)::-webkit-scrollbar-track,
+.tabContent:not(#logsTab)::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+#logOutput {
+  overflow-y: auto;
+  scrollbar-width: none;
+  resize: none;
+  white-space: pre-wrap;
+}
+
+#logOutput:focus {
+  outline: none;
+}
+
+#logOutput::-webkit-scrollbar {
+  width: 8px;
+  background: transparent;
+}
+
+#logOutput::-webkit-scrollbar-thumb {
+  background: var(--color-base-300);
+  border-radius: 8px;
+  visibility: hidden;
+  transition: visibility 0.2s ease-in-out;
+}
+
+#logOutput:hover::-webkit-scrollbar-thumb,
+#logOutput:focus-within::-webkit-scrollbar-thumb {
+  visibility: visible;
+}
+
+#logOutput::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.card .overflow-y-auto,
+.card .overflow-auto,
+.form-control .overflow-y-auto,
+.form-control .overflow-auto,
+#configForm .space-y-4,
+#configCore .space-y-4,
+.card > div > .space-y-4 {
+  scrollbar-width: thin !important;
+  scrollbar-color: var(--color-base-100) transparent !important;
+}
+
+.card .overflow-y-auto::-webkit-scrollbar,
+.card .overflow-auto::-webkit-scrollbar,
+.form-control .overflow-y-auto::-webkit-scrollbar,
+.form-control .overflow-auto::-webkit-scrollbar,
+#configForm .space-y-4::-webkit-scrollbar,
+#configCore .space-y-4::-webkit-scrollbar,
+.card > div > .space-y-4::-webkit-scrollbar {
+  width: 8px !important;
+  background: transparent !important;
+}
+
+.card .overflow-y-auto::-webkit-scrollbar-thumb,
+.card .overflow-auto::-webkit-scrollbar-thumb,
+.form-control .overflow-y-auto::-webkit-scrollbar-thumb,
+.form-control .overflow-auto::-webkit-scrollbar-thumb,
+#configForm .space-y-4::-webkit-scrollbar-thumb,
+#configCore .space-y-4::-webkit-scrollbar-thumb,
+.card > div > .space-y-4::-webkit-scrollbar-thumb {
+  background: var(--color-base-300) !important;
+  border-radius: 8px !important;
+}
+
+.card .overflow-y-auto::-webkit-scrollbar-track,
+.card .overflow-auto::-webkit-scrollbar-track,
+.form-control .overflow-y-auto::-webkit-scrollbar-track,
+.form-control .overflow-auto::-webkit-scrollbar-track,
+#configForm .space-y-4::-webkit-scrollbar-track,
+#configCore .space-y-4::-webkit-scrollbar-track,
+.card > div > .space-y-4::-webkit-scrollbar-track {
+  background: transparent !important;
+}
+
+#helpModal {
+  background-color: rgba(0, 0, 0, 0.5) !important;
+  z-index: 100;
+  position: fixed !important;
+  inset: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  overflow: hidden !important;
+}
+
+#helpModal > div {
+  background-color: var(--color-base-100) !important;
+  width: auto !important;
+  max-width: min(800px, 90vw) !important;
+  max-height: 85vh !important;
+  margin: auto !important;
+  border-radius: var(--radius-box) !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+}
+
+#helpModal > div > div:first-child {
+  flex-shrink: 0;
+}
+
+#helpModal .markdown-body {
+  color: var(--color-base-content);
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  flex: 1 1 auto !important;
+  padding: 1.5rem !important;
+  max-height: calc(85vh - 60px) !important;
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-base-300) transparent;
+}
+
+#helpModal .markdown-body::-webkit-scrollbar {
+  width: 8px;
+  background: transparent;
+}
+
+#helpModal .markdown-body::-webkit-scrollbar-thumb {
+  background: var(--color-base-300);
+  border-radius: 8px;
+}
+
+#helpModal .markdown-body::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+@layer utilities {
+  #logOutput {
+    overflow-y: auto;
+    scrollbar-width: none;
+    resize: none;
+    white-space: pre-wrap;
+  }
+
+  #logOutput:focus {
+    outline: none;
+  }
+
+  #logOutput::-webkit-scrollbar {
+    width: 8px;
+    background: transparent;
+  }
+
+  #logOutput::-webkit-scrollbar-thumb {
+    background: var(--color-base-300, #333);
+    border-radius: 8px;
+    visibility: hidden;
+    transition: visibility 0.2s ease-in-out;
+  }
+
+  #logOutput:hover::-webkit-scrollbar-thumb,
+  #logOutput:focus-within::-webkit-scrollbar-thumb {
+    visibility: visible;
+  }
+
+  #logOutput::-webkit-scrollbar-track {
+    background: transparent;
+  }
+}
+
+/* =========================================== */
+/*          Add Masonry Layout Styles          */
+/* =========================================== */
+
+.masonry-dashboard {
+  columns: 1;
+  column-gap: 1.5rem;
+}
+
+@screen md {
+  .masonry-dashboard {
+    columns: 2;
+  }
+}
+
+@screen lg {
+  .masonry-dashboard {
+    columns: 3;
+  }
+}
+
+@screen xl {
+  .masonry-dashboard {
+    columns: 4;
+  }
+}
+
+@screen 2xl {
+  .masonry-dashboard {
+    columns: 5;
+  }
+}
+
+@screen 3xl {
+  .masonry-dashboard {
+    columns: 6;
+  }
+}
+
+@screen 4xl {
+  .masonry-dashboard {
+    columns: 7;
+  }
+}
+
+/* =========================================== */
+/*       Don't Break Cards Across Columns      */
+/* =========================================== */
+
+.masonry-dashboard > * {
+  break-inside: avoid;
+  margin-bottom: 1.5rem;
+}
+
+/* =========================================== */
+/*         Sound Effect / Color Buttons        */
+/* =========================================== */
+
+#soundButtons,
+#colorButtons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+#soundButtons > button,
+#colorButtons > button {
+  flex: 0 1 auto;
+  appearance: button;
+  -webkit-appearance: button;
+  background-image: none;
+}
+
+/* =========================================== */
+/*      Make Unstyled Buttons Transparent      */
+/* =========================================== */
+
+button.unstyled {
+  background-color: transparent;
+}
+
+/* =========================================== */
+/*            Override Toggle Colors           */
+/* =========================================== */
+
+.toggle-success,
+.toggle {
+  --input-color: var(--color-base-content);
+  border-color: var(--color-base-content);
+  background-color: transparent;
+}
+
+.toggle-success:checked,
+.toggle:checked {
+  --input-color: var(--color-success) !important;
+  border-color: var(--color-success) !important;
+  background-color: transparent;
+}
+
+/* =========================================== */
+/*          Config Headers and Titles          */
+/* =========================================== */
+
+.text-accent {
+  color: var(--color-base-content) !important;
+}
+
+/* =========================================== */
+/*             Log Message Styling             */
+/* =========================================== */
+
+.log-ok {
+  color: var(--color-success);
+}
+
+.log-warn {
+  color: var(--color-warning);
+}
+
+.log-error {
+  color: var(--color-error);
+}
+
+.log-chat {
+  color: var(--color-info);
+}
+
+.markdown-body h2 {
+  font-size: 1.5rem;
+  font-weight: bold;
+  margin-top: 1.5rem;
+  margin-bottom: 1rem;
+  color: var(--color-accent);
+}
+
+.markdown-body h3 {
+  font-size: 1.25rem;
+  font-weight: bold;
+  margin-top: 1.25rem;
+  margin-bottom: 0.75rem;
+  color: var(--color-primary);
+}
+
+.markdown-body p {
+  margin-bottom: 1rem;
+}
+
+.markdown-body ul,
+.markdown-body ol {
+  padding-left: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.markdown-body ul {
+  list-style-type: disc;
+}
+
+.markdown-body ol {
+  list-style-type: decimal;
+}
+
+.markdown-body li {
+  margin-bottom: 0.25rem;
+}
+
+.markdown-body code {
+  font-family: monospace;
+  background-color: var(--color-base-300);
+  padding: 0.1em 0.3em;
+  border-radius: 3px;
+  font-size: 0.875rem;
+}
+
+.markdown-body pre {
+  background-color: var(--color-base-300);
+  padding: 1rem;
+  border-radius: 0.5rem;
+  margin-bottom: 1rem;
+  overflow-x: auto;
+}
+
+.markdown-body pre code {
+  background-color: transparent;
+  padding: 0;
+}
+
+.markdown-body blockquote {
+  padding-left: 1rem;
+  border-left: 4px solid rgba(var(--color-base-content-rgb), 0.3);
+  font-style: italic;
+}
+
+#helpModal {
+  background-color: rgba(0, 0, 0, 0.5) !important;
+  z-index: 100;
+  position: fixed !important;
+  inset: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  overflow: hidden !important;
+}
+
+#helpModal > div {
+  background-color: var(--color-base-100) !important;
+  width: auto !important;
+  max-width: min(800px, 90vw) !important;
+  max-height: 85vh !important;
+  margin: auto !important;
+  border-radius: var(--radius-box) !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+}
+
+#helpModal > div > div:first-child {
+  flex-shrink: 0;
+}
+
+#helpModal .markdown-body {
+  color: var(--color-base-content);
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  flex: 1 1 auto !important;
+  padding: 1.5rem !important;
+  max-height: calc(85vh - 60px) !important;
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-base-300) transparent;
+}
+
+#helpModal .markdown-body::-webkit-scrollbar {
+  width: 8px;
+  background: transparent;
+}
+
+#helpModal .markdown-body::-webkit-scrollbar-thumb {
+  background: var(--color-base-300);
+  border-radius: 8px;
+}
+
+#helpModal .markdown-body::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.drag-region {
+  -webkit-app-region: drag;
+  app-region: drag;
+}
+
+#titleBar {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  height: 32px;
+}
+
+.window-controls button {
+  -webkit-app-region: no-drag;
+  app-region: no-drag;
+}
+
+.content-below-title {
+  height: calc(100vh - 32px);
+  overflow-y: auto;
+}
+
+/* =========================================== */
+/*      Custom styling for toggle switches     */
+/* =========================================== */
+
+.toggle:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+  background-color: var(--color-base-200) !important;
+  border-color: var(--color-base-300) !important;
+}
+
+.toggle:disabled:checked {
+  background-color: var(--color-success) !important;
+  opacity: 0.4;
+  border-color: var(--color-success) !important;
+}
+
+.toggle:disabled:before {
+  background-color: var(--color-base-300);
+}
+
+.module-disabled .toggle:checked {
+  background-color: var(--color-success) !important;
+  opacity: 0.4;
+}
+
+.module-disabled .label {
+  opacity: 0.7;
+}
+
+/* =========================================== */
+/*            Log filtering rules              */
+/* =========================================== */
+
+.hide-info-logs [data-log-level='info'] {
+  display: none;
+}
+
+.hide-warn-logs [data-log-level='warn'] {
+  display: none;
+}
+
+.hide-error-logs [data-log-level='error'] {
+  display: none;
+}
+
+.log-highlight {
+  background-color: rgba(var(--color-accent-rgb), 0.3);
+  border-radius: 2px;
+}
+
+.hide-search [data-search-match='false'] {
+  display: none;
+}
+
+#clearSearchBtn {
+  display: none;
+}
+
+#logSearchInput:not(:placeholder-shown) + #clearSearchBtn {
+  display: inline-flex;
+}
+
+/* =========================================== */
+/*               OBS Dock Window               */
+/* =========================================== */
+
+.dockable-window .tabs.tabs-boxed {
+  margin-top: 0;
+  border-radius: 0;
+}
+
+.dockable-window {
+  border: none;
+}
+
+/* =========================================== */
+/*              Setup Wizard Modal             */
+/* =========================================== */
+
+#wizardModal {
+  background-color: rgba(0, 0, 0, 0.5) !important;
+  z-index: 100;
+  position: fixed !important;
+  inset: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  overflow: hidden !important;
+}
+
+#wizardModal > div {
+  background-color: var(--color-base-100) !important;
+  width: 750px !important;
+  height: 950px !important;
+  margin: auto !important;
+  border-radius: var(--radius-box) !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+}
+
+#wizardModal > div > div:first-child {
+  flex-shrink: 0;
+}
+
+#wizardModal .markdown-body {
+  color: var(--color-base-content);
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  flex: 1 1 auto !important;
+  padding: 0 !important;
+  max-height: calc(85vh - 60px) !important;
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-base-300) transparent;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow-y: hidden !important;
+}
+
+/* This is for the main container */
+#wizardModal .markdown-body > div {
+  display: flex !important;
+  flex-direction: column !important;
+  height: 100% !important;
+}
+
+/* This makes the content area scrollable */
+#wizardModal .markdown-body .flex-grow {
+  overflow-y: auto !important;
+  padding: 1.5rem !important;
+  padding-bottom: 0.75rem !important;
+}
+
+/* Fix the navigation buttons at the bottom */
+#wizardModal .markdown-body .flex-col > div:last-child {
+  padding: 1rem 1.5rem !important;
+  border-top: 1px solid var(--color-base-300) !important;
+  margin-top: auto !important; /* Push to bottom */
+  flex-shrink: 0 !important;
+  background-color: var(--color-base-100) !important;
+}
+
+#wizardModal .markdown-body::-webkit-scrollbar {
+  width: 8px;
+  background: transparent;
+}
+
+#wizardModal .markdown-body::-webkit-scrollbar-thumb {
+  background: var(--color-base-300);
+  border-radius: 8px;
+}
+
+#wizardModal .markdown-body::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.wizard-description {
+  font-size: 0.875rem !important;
+  opacity: 0.5 !important;
+}

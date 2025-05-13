@@ -1,15 +1,21 @@
-const { exec } = require("child_process");
-const path = require("path");
+// ==============================================
+//                  build-css.js
+// ==============================================
 
-const tailwindPath = path.join(__dirname, "node_modules", "tailwindcss", "lib", "cli.js");
+// ==============================================
+//                 Initial Setup
+// ==============================================
 
-exec(
-  `node "${tailwindPath}" -i ./gui/input.css -o ./gui/style.css`,
-  (err, stdout, stderr) => {
-    if (err) {
-      console.error("❌ Error:", stderr || err);
-    } else {
-      console.log(stdout);
-    }
+const { exec } = require('child_process');
+const path = require('path');
+
+const tailwindPath = path.join(__dirname, 'node_modules', '.bin', 'tailwindcss');
+
+exec(`"${tailwindPath}" -i ./gui/input.css -o ./gui/style.css`, (err, stdout, stderr) => {
+  if (err) {
+    console.error('❌ Error:', stderr || err);
+  } else {
+    console.log('✅ CSS built successfully!');
+    console.log(stdout);
   }
-);
+});
